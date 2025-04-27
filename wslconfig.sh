@@ -261,7 +261,7 @@ cat > "$HOME/.p10k.zsh" << 'EOL'
     fi
   }
 
-  typeset -g POWERLEVEL9K_MODE=nerdfont-complete
+  typeset -g POWERLEVEL9K_MODE=powerline
   typeset -g POWERLEVEL9K_ICON_PADDING=moderate
   typeset -g POWERLEVEL9K_ICON_BEFORE_CONTENT=
   typeset -g POWERLEVEL9K_PROMPT_ADD_NEWLINE=true
@@ -405,19 +405,20 @@ if [ -f "$HOME/_awsp" ]; then
     rm "$HOME/_awsp"
 fi
 
-# Install font if running in Windows Terminal
-section "Installing Nerd Font"
-info "Downloading JetBrainsMono Nerd Font"
-mkdir -p "$HOME/.local/share/fonts"
-wget -q --show-progress "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip" -O /tmp/JetBrainsMono.zip
-unzip -q -o /tmp/JetBrainsMono.zip -d "$HOME/.local/share/fonts"
-rm /tmp/JetBrainsMono.zip
-fc-cache -f
+# Install Powerline fonts
+section "Installing Powerline fonts"
+info "Downloading and installing Powerline fonts"
+git clone https://github.com/powerline/fonts.git --depth=1 "/tmp/powerline-fonts"
+cd "/tmp/powerline-fonts"
+./install.sh
+cd "$HOME"
+rm -rf "/tmp/powerline-fonts"
 
-info "Nerd Font installed to ~/.local/share/fonts"
-info "To use this font in Windows Terminal:"
-info "1. Install the font on Windows (copy from WSL to Windows or download manually)"
-info "2. Open Windows Terminal settings and set the font to 'JetBrainsMono Nerd Font'"
+info "Powerline fonts installed"
+info "Recommended fonts for your terminal:"
+info "- DejaVu Sans Mono for Powerline"
+info "- Ubuntu Mono derivative Powerline"
+info "- Source Code Pro for Powerline"
 
 # Git configuration helper
 section "Setting up Git configuration"
