@@ -51,7 +51,19 @@ sudo apt update
 
 section "Installing prerequisites"
 info "Installing basic development tools and dependencies"
-sudo apt install -y git curl wget zip unzip build-essential python3 python3-pip python3-venv nodejs npm
+sudo apt install -y git curl wget zip unzip build-essential python3 python3-pip python3-venv
+
+# Install Node.js and npm from NodeSource repository
+section "Installing Node.js and npm"
+if ! command_exists node; then
+    info "Adding NodeSource repository"
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    info "Installing Node.js and npm"
+    sudo apt install -y nodejs
+    info "Node.js $(node -v) and npm $(npm -v) installed"
+else
+    info "Node.js $(node -v) and npm $(npm -v) already installed"
+fi
 
 # Install ZSH if not already installed
 if ! command_exists zsh; then
@@ -107,8 +119,16 @@ fi
 
 # Install AWS utilities
 section "Installing AWS utilities"
-pip install aws-sso-util
-pip install aws-profile-switcher
+info "Installing pipx for isolated Python application installation"
+sudo apt install -y pipx python3-full
+pipx ensurepath
+
+info "Installing AWS utilities using pipx"
+pipx install aws-sso-util
+pipx install aws-profile-switcher
+
+# Make pipx installed tools available in current shell
+export PATH="$HOME/.local/bin:$PATH"
 
 # Create AWS config directory if it doesn't exist
 mkdir -p ~/.aws
@@ -128,9 +148,27 @@ fi
 
 # Install AWS development tools
 section "Installing AWS development tools"
-pip install aws-sam-cli
-pip install cdk-cli
+info "Installing AWS SAM CLI and CDK CLI using pipx"
+pipx install aws-sam-cli
+pipx install aws-cdk-cli
+
+# Configure npm to install global packages in user directory
+info "Configuring npm to use a user directory for global packages"
+mkdir -p "$HOME/.npm-global"
+npm config set prefix "$HOME/.npm-global"
+
+# Add npm global bin to PATH for current session
+export PATH="$HOME/.npm-global/bin:$PATH"
+
+# Add npm global bin to PATH in .zshrc
+cat >> "$HOME/.zshrc" << 'EOL'
+
+# Add npm global bin to PATH
+export PATH="$HOME/.npm-global/bin:$PATH"
+EOL
+
 if ! command_exists serverless; then
+    info "Installing Serverless Framework"
     npm install -g serverless
 else
     info "Serverless Framework is already installed"
@@ -171,12 +209,14 @@ plugins=(
 # Source oh-my-zsh
 source $ZSH/oh-my-zsh.sh
 
-# AWS profile switcher
-alias awsp="source _awsp"
+# AWS profile switcher function
+function awsp() {
+  eval "$(~/.local/bin/aws-profile-switcher)"
+}
 
 # Custom AWS helper aliases
 alias awsw="aws --profile work"
-alias awsp="aws --profile personal"
+alias awsd="aws --profile dev"
 alias awsl="aws configure list-profiles"
 
 # Git aliases
@@ -338,19 +378,32 @@ fi
 
 # Create AWS profile switcher script
 section "Creating AWS profile switcher script"
-cat > "$HOME/_awsp" << 'EOL'
+mkdir -p "$HOME/.local/bin"
+cat > "$HOME/.local/bin/aws-profile-switcher" << 'EOL'
 #!/bin/bash
 # AWS Profile Switcher
 
-PROFILE=$(aws configure list-profiles | fzf --height 15 --reverse)
-if [[ -n "$PROFILE" ]]; then
-    export AWS_PROFILE="$PROFILE"
-    echo "Switched to AWS profile: $PROFILE"
+# List profiles and select with fzf
+profiles=$(aws configure list-profiles 2>/dev/null)
+if [ -z "$profiles" ]; then
+  echo "No AWS profiles found. Check your AWS configuration."
+  exit 1
+fi
+
+selected=$(echo "$profiles" | fzf --height 15 --reverse)
+if [ -n "$selected" ]; then
+  # Export the variable to parent shell
+  echo "export AWS_PROFILE=\"$selected\""
 else
-    echo "No profile selected"
+  echo "echo \"No profile selected\""
 fi
 EOL
-chmod +x "$HOME/_awsp"
+chmod +x "$HOME/.local/bin/aws-profile-switcher"
+
+# Remove old _awsp script if it exists
+if [ -f "$HOME/_awsp" ]; then
+    rm "$HOME/_awsp"
+fi
 
 # Install font if running in Windows Terminal
 section "Installing Nerd Font"
@@ -387,9 +440,9 @@ section "Setup complete!"
 info "Your WSL environment has been configured with:"
 info "✓ ZSH with Oh My Zsh"
 info "✓ Powerlevel10k theme optimized for AWS"
-info "✓ AWS CLI v2 and utilities"
+info "✓ AWS CLI v2 and utilities (installed with pipx)"
 info "✓ GitHub CLI"
-info "✓ AWS development tools"
+info "✓ AWS development tools (installed with pipx and npm)"
 info "✓ JetBrainsMono Nerd Font"
 
 info "\nTo complete the setup:"
@@ -400,3 +453,5 @@ info "3. To switch between AWS profiles, type 'awsp'"
 # Setup success
 echo -e "\n${GREEN}AWS Power User WSL Setup complete! 🚀${NC}"
 echo -e "${YELLOW}Please restart your terminal to apply all changes.${NC}"
+echo -e "${YELLOW}Note: If this is the first run, some paths might not be available until you restart your terminal.${NC}"
+echo -e "${YELLOW}      The PATH environment will include ~/.local/bin for pipx-installed tools.${NC}"
