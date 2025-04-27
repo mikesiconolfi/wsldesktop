@@ -46,6 +46,11 @@ if [ "$(id -u)" = "0" ]; then
     exit 1
 fi
 
+section "Checking prerequisites"
+info "Ensuring required packages are installed"
+sudo apt update
+sudo apt install -y fzf curl wget unzip git
+
 section "Updating package lists"
 sudo apt update
 
@@ -117,128 +122,6 @@ else
     info "AWS CLI v2 is already installed"
 fi
 
-# Install additional productivity tools
-section "Installing productivity enhancements"
-
-# Install and configure fzf for better command history search
-info "Setting up enhanced command history search with fzf"
-cat >> "$HOME/.zshrc" << 'EOL'
-
-# fzf integration for command history search
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-# CTRL-R - Search command history with fzf
-bindkey '^R' fzf-history-widget
-EOL
-
-# Install and configure tldr for simplified man pages
-info "Installing tldr for simplified command examples"
-sudo apt install -y tldr
-tldr --update
-
-# Install and configure direnv for environment switching
-info "Installing direnv for automatic environment switching"
-sudo apt install -y direnv
-cat >> "$HOME/.zshrc" << 'EOL'
-
-# direnv integration for automatic env switching
-eval "$(direnv hook zsh)"
-EOL
-
-# Install and configure bat for better file viewing
-info "Installing bat for syntax highlighted file viewing"
-sudo apt install -y bat
-if ! command -v bat &> /dev/null; then
-  # On some systems, bat is installed as batcat
-  echo 'alias bat="batcat"' >> "$HOME/.zshrc"
-fi
-
-# Install and configure exa/eza for better directory listings
-if apt-cache show eza &> /dev/null; then
-  info "Installing eza for enhanced directory listings"
-  sudo apt install -y eza
-  cat >> "$HOME/.zshrc" << 'EOL'
-
-# Use eza instead of ls
-alias ls="eza --icons"
-alias ll="eza --icons -la"
-alias lt="eza --icons -T --level=2"
-alias ltl="eza --icons -T --level=2 -l"
-EOL
-elif apt-cache show exa &> /dev/null; then
-  info "Installing exa for enhanced directory listings"
-  sudo apt install -y exa
-  cat >> "$HOME/.zshrc" << 'EOL'
-
-# Use exa instead of ls
-alias ls="exa --icons"
-alias ll="exa --icons -la"
-alias lt="exa --icons -T --level=2"
-alias ltl="exa --icons -T --level=2 -l"
-EOL
-fi
-
-# Install AWS auto-completion
-info "Setting up AWS CLI autocompletion"
-echo 'autoload -Uz compinit && compinit' >> "$HOME/.zshrc"
-echo 'complete -C "$(which aws_completer)" aws' >> "$HOME/.zshrc"
-
-# Create AWS specific aliases and functions
-info "Creating AWS specific aliases and functions"
-cat >> "$HOME/.zshrc" << 'EOL'
-
-# AWS specific aliases and functions
-alias awsid="aws sts get-caller-identity"
-alias awsr="aws --region"
-alias awss3="aws s3 ls"
-alias awsec2="aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,State.Name,Tags[?Key==`Name`].Value|[0],InstanceType,PublicIpAddress,PrivateIpAddress]' --output table"
-alias awslambda="aws lambda list-functions --query 'Functions[*].[FunctionName,Runtime,MemorySize]' --output table"
-
-# Function to quickly find and tail CloudWatch logs
-function awslogs() {
-  log_groups=$(aws logs describe-log-groups --query 'logGroups[*].logGroupName' --output text)
-  if [[ -z "$log_groups" ]]; then
-    echo "No log groups found"
-    return 1
-  fi
-  
-  selected=$(echo "$log_groups" | fzf)
-  if [[ -n "$selected" ]]; then
-    aws logs tail "$selected" --follow
-  fi
-}
-
-# Function to show all running EC2 instances with important details
-function awsec2list() {
-  aws ec2 describe-instances \
-    --filters "Name=instance-state-name,Values=running" \
-    --query 'Reservations[*].Instances[*].{ID:InstanceId,Name:Tags[?Key==`Name`]|[0].Value,Type:InstanceType,State:State.Name,IP:PublicIpAddress,PrivateIP:PrivateIpAddress,AZ:Placement.AvailabilityZone}' \
-    --output table
-}
-
-# Function to quickly switch between AWS regions
-function awsregion() {
-  regions=$(aws ec2 describe-regions --query 'Regions[*].RegionName' --output text)
-  if [[ -z "$regions" ]]; then
-    echo "Could not retrieve AWS regions"
-    return 1
-  fi
-  
-  selected=$(echo "$regions" | fzf)
-  if [[ -n "$selected" ]]; then
-    export AWS_REGION="$selected"
-    export AWS_DEFAULT_REGION="$selected"
-    echo "Switched to region: $selected"
-  fi
-}
-
-# Show CloudFormation stack status
-function awscf() {
-  aws cloudformation list-stacks \
-    --query 'StackSummaries[*].{Name:StackName,Status:StackStatus,CreationTime:CreationTime}' \
-    --output table
-}
-EOL
-
 # Install AWS utilities
 section "Installing AWS utilities"
 info "Installing pipx for isolated Python application installation"
@@ -252,115 +135,27 @@ pipx install aws-profile-switcher
 # Make pipx installed tools available in current shell
 export PATH="$HOME/.local/bin:$PATH"
 
-# Create AWS config directory if it doesn't exist
-mkdir -p ~/.aws
+# Install Powerline fonts
+section "Installing Powerline fonts"
+info "Downloading and installing Powerline fonts"
+git clone https://github.com/powerline/fonts.git --depth=1 "/tmp/powerline-fonts"
+cd "/tmp/powerline-fonts"
+./install.sh
+cd "$HOME"
+rm -rf "/tmp/powerline-fonts"
 
-# Install GitHub CLI
-section "Installing GitHub CLI"
-if ! command_exists gh; then
-    type -p curl >/dev/null || sudo apt install -y curl
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-    sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    sudo apt update
-    sudo apt install -y gh
-else
-    info "GitHub CLI is already installed"
-fi
-
-# Install AWS development tools
-section "Installing AWS development tools"
-info "Installing AWS SAM CLI and CDK CLI using pipx"
-pipx install aws-sam-cli
-pipx install aws-cdk-cli
-
-# Configure npm to install global packages in user directory
-info "Configuring npm to use a user directory for global packages"
-mkdir -p "$HOME/.npm-global"
-npm config set prefix "$HOME/.npm-global"
-
-# Add npm global bin to PATH for current session
-export PATH="$HOME/.npm-global/bin:$PATH"
-
-# Add npm global bin to PATH in .zshrc
-cat >> "$HOME/.zshrc" << 'EOL'
-
-# Add npm global bin to PATH
-export PATH="$HOME/.npm-global/bin:$PATH"
-EOL
-
-if ! command_exists serverless; then
-    info "Installing Serverless Framework"
-    npm install -g serverless
-else
-    info "Serverless Framework is already installed"
-fi
-
-# Configure ZSH
-section "Configuring ZSH"
-
-# Backup existing .zshrc if it exists
-if [ -f "$HOME/.zshrc" ]; then
-    info "Backing up existing .zshrc to .zshrc.backup"
-    cp "$HOME/.zshrc" "$HOME/.zshrc.backup"
-fi
-
-# Create new .zshrc with our configuration
-cat > "$HOME/.zshrc" << 'EOL'
-# Enable Powerlevel10k instant prompt
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
-# Path to oh-my-zsh installation
-export ZSH="$HOME/.oh-my-zsh"
-
-# Set theme
-ZSH_THEME="powerlevel10k/powerlevel10k"
-
-# Set plugins
-plugins=(
-  git
-  aws
-  docker
-  vscode
-  zsh-autosuggestions
-  zsh-syntax-highlighting
-)
-
-# Source oh-my-zsh
-source $ZSH/oh-my-zsh.sh
-
-# AWS profile switcher function
-function awsp() {
-  eval "$(~/.local/bin/aws-profile-switcher)"
-}
-
-# Custom AWS helper aliases
-alias awsw="aws --profile work"
-alias awsd="aws --profile dev"
-alias awsl="aws configure list-profiles"
-
-# Git aliases
-alias gs="git status"
-alias gc="git commit"
-alias gp="git push"
-alias gl="git pull"
-
-# Improved ls commands
-alias ll="ls -alh"
-alias la="ls -A"
-
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-EOL
+info "Powerline fonts installed"
+info "Recommended fonts for your terminal:"
+info "- DejaVu Sans Mono for Powerline"
+info "- Ubuntu Mono derivative Powerline"
+info "- Source Code Pro for Powerline"
 
 # Download p10k configuration file optimized for AWS (only if it doesn't exist)
 section "Setting up Powerlevel10k configuration"
 
 if [ ! -f "$HOME/.p10k.zsh" ]; then
   info "Creating new Powerlevel10k configuration file"
-  cat > "$HOME/.p10k.zsh" << 'EOL'
+  cat > "$HOME/.p10k.zsh" << 'EOF'
 # Generated by Powerlevel10k configuration wizard
 # Optimized for AWS development
 # Configuration adapted for AWS developers
@@ -461,7 +256,7 @@ if [ ! -f "$HOME/.p10k.zsh" ]; then
 
 (( ${#p10k_config_opts} )) && setopt ${p10k_config_opts[@]}
 'builtin' 'unset' 'p10k_config_opts'
-EOL
+EOF
   info "Powerlevel10k configuration created at ~/.p10k.zsh"
 else
   info "Existing Powerlevel10k configuration detected at ~/.p10k.zsh"
@@ -495,11 +290,124 @@ else
   fi
 fi
 
+# Configure ZSH
+section "Configuring ZSH"
+
+# Backup existing .zshrc if it exists
+if [ -f "$HOME/.zshrc" ]; then
+    info "Backing up existing .zshrc to .zshrc.backup.$(date +%s)"
+    cp "$HOME/.zshrc" "$HOME/.zshrc.backup.$(date +%s)"
+    
+    # Check if this is a previous installation from our script
+    if grep -q "# AWS Power User WSL Setup" "$HOME/.zshrc"; then
+        info "Previous AWS Power User WSL Setup detected"
+        info "Will update existing configuration instead of overwriting"
+        update_existing=true
+    else
+        update_existing=false
+    fi
+else
+    update_existing=false
+fi
+
+# If we're not updating an existing config, create a new .zshrc
+if [ "$update_existing" = false ]; then
+    info "Creating new .zshrc with our configuration"
+    # Create new .zshrc with our configuration
+    cat > "$HOME/.zshrc" << 'EOF'
+# AWS Power User WSL Setup - Configuration file
+# This file was generated by the AWS Power User WSL Setup script
+
+# Enable Powerlevel10k instant prompt
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# Path to oh-my-zsh installation
+export ZSH="$HOME/.oh-my-zsh"
+
+# Set theme
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Set plugins
+plugins=(
+  git
+  aws
+  docker
+  vscode
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
+
+# Source oh-my-zsh
+source $ZSH/oh-my-zsh.sh
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# Add pipx installed binaries to path
+export PATH="$HOME/.local/bin:$PATH"
+
+# Add npm global bin to PATH
+export PATH="$HOME/.npm-global/bin:$PATH"
+EOF
+else
+    # We're updating an existing configuration
+    info "Updating existing .zshrc file"
+    
+    # Make sure the theme is set correctly
+    if ! grep -q "ZSH_THEME=\"powerlevel10k/powerlevel10k\"" "$HOME/.zshrc"; then
+        info "Setting Powerlevel10k as the theme"
+        # Try to find the existing theme line and replace it
+        if grep -q "ZSH_THEME=" "$HOME/.zshrc"; then
+            sed -i 's/ZSH_THEME="[^"]*"/ZSH_THEME="powerlevel10k\/powerlevel10k"/g' "$HOME/.zshrc"
+        else
+            # If no theme line exists, add it
+            echo 'ZSH_THEME="powerlevel10k/powerlevel10k"' >> "$HOME/.zshrc"
+        fi
+    fi
+    
+    # Make sure the plugins are set correctly
+    if ! grep -q "zsh-autosuggestions" "$HOME/.zshrc" || ! grep -q "zsh-syntax-highlighting" "$HOME/.zshrc"; then
+        info "Updating plugins to include zsh-autosuggestions and zsh-syntax-highlighting"
+        
+        # Try to find the existing plugins line and update it
+        if grep -q "plugins=(" "$HOME/.zshrc"; then
+            # Check if each plugin is already present
+            for plugin in "git" "aws" "docker" "vscode" "zsh-autosuggestions" "zsh-syntax-highlighting"; do
+                if ! grep -q "plugins=([^)]*$plugin" "$HOME/.zshrc"; then
+                    # Use awk to add the plugin to the existing plugins line
+                    awk -v plugin="$plugin" '{if (/plugins=\(/) {sub(/\)/, " " plugin ")")} print}' "$HOME/.zshrc" > "$HOME/.zshrc.tmp"
+                    mv "$HOME/.zshrc.tmp" "$HOME/.zshrc"
+                fi
+            done
+        else
+            # If no plugins line exists, add it
+            echo 'plugins=(git aws docker vscode zsh-autosuggestions zsh-syntax-highlighting)' >> "$HOME/.zshrc"
+        fi
+    fi
+    
+    # Make sure p10k is sourced
+    if ! grep -q "source.*\.p10k\.zsh" "$HOME/.zshrc"; then
+        echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> "$HOME/.zshrc"
+    fi
+    
+    # Make sure PATH includes local bin
+    if ! grep -q "PATH=.*\.local/bin" "$HOME/.zshrc"; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
+    fi
+    
+    # Make sure PATH includes npm global bin
+    if ! grep -q "PATH=.*\.npm-global/bin" "$HOME/.zshrc"; then
+        echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$HOME/.zshrc"
+    fi
+fi
+
 # Create a sample AWS config file if it doesn't exist
 if [ ! -f "$HOME/.aws/config" ]; then
     section "Creating sample AWS config file"
     mkdir -p "$HOME/.aws"
-    cat > "$HOME/.aws/config" << 'EOL'
+    cat > "$HOME/.aws/config" << 'EOF'
 # Sample AWS Config File
 # Replace with your actual AWS SSO info and account details
 
@@ -527,120 +435,217 @@ role_arn = arn:aws:iam::987654321098:role/CrossAccountRole
 source_profile = dev
 region = us-east-1
 output = json
-EOL
+EOF
     info "Created sample AWS config at ~/.aws/config"
     info "Please edit this file with your actual AWS account details"
 fi
 
-# Create AWS profile switcher script
-section "Creating AWS profile switcher script"
-mkdir -p "$HOME/.local/bin"
-cat > "$HOME/.local/bin/aws-profile-switcher" << 'EOL'
+# Create AWS profile switcher
+section "Setting up AWS profile switcher"
+# Create AWS profile switcher directory
+mkdir -p "$HOME/.aws-tools"
+
+# Create AWS profile switcher and utility functions
+cat > "$HOME/.aws-tools/aws-functions.sh" << 'EOF'
 #!/bin/bash
-# AWS Profile Switcher
+# AWS Power User functions and aliases
 
-# List profiles and select with fzf
-profiles=$(aws configure list-profiles 2>/dev/null)
-if [ -z "$profiles" ]; then
-  echo "No AWS profiles found. Check your AWS configuration."
-  exit 1
-fi
+# Profile switching
+awsp() {
+  local profiles=$(aws configure list-profiles 2>/dev/null)
+  if [ -z "$profiles" ]; then
+    echo "No AWS profiles found. Check your AWS configuration."
+    return 1
+  fi
+  
+  local selected=$(echo "$profiles" | fzf --height 15)
+  if [ -n "$selected" ]; then
+    export AWS_PROFILE="$selected"
+    echo "Switched to AWS profile: $selected"
+  else
+    echo "No profile selected"
+  fi
+}
 
-selected=$(echo "$profiles" | fzf --height 15 --reverse)
-if [ -n "$selected" ]; then
-  # Export the variable to parent shell
-  echo "export AWS_PROFILE=\"$selected\""
+# AWS specific aliases and functions
+alias awsid="aws sts get-caller-identity"
+alias awsr="aws --region"
+alias awss3="aws s3 ls"
+alias awsec2="aws ec2 describe-instances --output table"
+alias awslambda="aws lambda list-functions --output table"
+alias awsw="aws --profile work"
+alias awsd="aws --profile dev"
+alias awsl="aws configure list-profiles"
+
+# Region switching
+awsregion() {
+  local regions=$(aws ec2 describe-regions --query 'Regions[*].RegionName' --output text)
+  if [[ -z "$regions" ]]; then
+    echo "Could not retrieve AWS regions"
+    return 1
+  fi
+  
+  local selected=$(echo "$regions" | fzf)
+  if [[ -n "$selected" ]]; then
+    export AWS_REGION="$selected"
+    export AWS_DEFAULT_REGION="$selected"
+    echo "Switched to region: $selected"
+  fi
+}
+
+# CloudWatch logs
+awslogs() {
+  local log_groups=$(aws logs describe-log-groups --query 'logGroups[*].logGroupName' --output text)
+  if [[ -z "$log_groups" ]]; then
+    echo "No log groups found"
+    return 1
+  fi
+  
+  local selected=$(echo "$log_groups" | fzf)
+  if [[ -n "$selected" ]]; then
+    aws logs tail "$selected" --follow
+  fi
+}
+
+# EC2 instances
+awsec2list() {
+  aws ec2 describe-instances \
+    --filters "Name=instance-state-name,Values=running" \
+    --output table
+}
+
+# CloudFormation stacks
+awscf() {
+  aws cloudformation list-stacks --output table
+}
+
+# AWS Session Manager helper
+ssm-connect() {
+  if [ -z "$1" ]; then
+    echo "Usage: ssm-connect <instance-id>"
+    return 1
+  fi
+  aws ssm start-session --target "$1"
+}
+
+# Docker shortcuts
+alias dps="docker ps"
+alias dpsa="docker ps -a"
+alias dimg="docker images"
+alias drm="docker rm"
+alias drmi="docker rmi"
+alias drun="docker run -it"
+alias dexec="docker exec -it"
+alias dcup="docker compose up -d"
+alias dcdown="docker compose down"
+
+# ECR login
+ecr-login() {
+  local region=${1:-$(aws configure get region)}
+  if [[ -z "$region" ]]; then
+    region="us-east-1"
+  fi
+  local account=$(aws sts get-caller-identity --query Account --output text)
+  if [[ -z "$account" ]]; then
+    echo "Could not get AWS account ID. Check your AWS credentials."
+    return 1
+  fi
+  
+  echo "Logging into ECR in region $region for account $account..."
+  aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "$account.dkr.ecr.$region.amazonaws.com"
+}
+
+# Terraform shortcuts
+alias tf="terraform"
+alias tfi="terraform init"
+alias tfp="terraform plan"
+alias tfa="terraform apply"
+alias tfd="terraform destroy"
+alias tfo="terraform output"
+EOF
+
+# Make AWS functions executable
+chmod +x "$HOME/.aws-tools/aws-functions.sh"
+
+# Add AWS functions to .zshrc if not already added
+if ! grep -q "source.*aws-functions.sh" "$HOME/.zshrc"; then
+  info "Adding AWS functions to .zshrc"
+  echo "" >> "$HOME/.zshrc"
+  echo "# AWS functions and aliases" >> "$HOME/.zshrc"
+  echo "source \$HOME/.aws-tools/aws-functions.sh" >> "$HOME/.zshrc"
 else
-  echo "echo \"No profile selected\""
-fi
-EOL
-chmod +x "$HOME/.local/bin/aws-profile-switcher"
-
-# Remove old _awsp script if it exists
-if [ -f "$HOME/_awsp" ]; then
-    rm "$HOME/_awsp"
+  info "AWS functions already in .zshrc"
 fi
 
-# Install Powerline fonts
-section "Installing Powerline fonts"
-info "Downloading and installing Powerline fonts"
-git clone https://github.com/powerline/fonts.git --depth=1 "/tmp/powerline-fonts"
-cd "/tmp/powerline-fonts"
-./install.sh
-cd "$HOME"
-rm -rf "/tmp/powerline-fonts"
+# Install AWS development tools
+section "Installing AWS development tools"
+info "Installing AWS SAM CLI and CDK CLI using pipx"
+pipx install aws-sam-cli
+pipx install aws-cdk-cli
 
-info "Powerline fonts installed"
-info "Recommended fonts for your terminal:"
-info "- DejaVu Sans Mono for Powerline"
-info "- Ubuntu Mono derivative Powerline"
-info "- Source Code Pro for Powerline"
+# Configure npm to install global packages in user directory
+info "Configuring npm to use a user directory for global packages"
+mkdir -p "$HOME/.npm-global"
+npm config set prefix "$HOME/.npm-global"
 
-# Git configuration helper
-section "Setting up Git configuration"
-if [ -z "$(git config --global user.email)" ]; then
-    read -p "Enter your Git email address: " git_email
-    git config --global user.email "$git_email"
+# Add npm global bin to PATH for current session
+export PATH="$HOME/.npm-global/bin:$PATH"
+
+if ! command_exists serverless; then
+    info "Installing Serverless Framework"
+    npm install -g serverless
 else
-    info "Git email is already configured as: $(git config --global user.email)"
+    info "Serverless Framework is already installed"
 fi
 
-if [ -z "$(git config --global user.name)" ]; then
-    read -p "Enter your Git name: " git_name
-    git config --global user.name "$git_name"
+section "Setting up Docker support"
+if ! command_exists docker; then
+  info "Installing Docker inside WSL"
+  # Install Docker prerequisites
+  sudo apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
+
+  # Add Docker's official GPG key
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+  # Set up the stable repository
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  # Install Docker Engine
+  sudo apt update
+  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+  # Add current user to the docker group
+  sudo usermod -aG docker $USER
+  
+  # Create Docker config directory if it doesn't exist
+  mkdir -p ~/.docker
+  
+  # Create Docker config file
+  cat > ~/.docker/config.json << 'EOF'
+{
+  "credHelpers": {
+    "public.ecr.aws": "ecr-login",
+    "*.dkr.ecr.*.amazonaws.com": "ecr-login"
+  }
+}
+EOF
+
+  info "Docker installed. You may need to restart your session to use Docker without sudo"
+  info "Use Docker with: docker run hello-world"
+  
+  # Install AWS ECR Docker credential helper
+  info "Installing Amazon ECR Docker Credential Helper"
+  pipx install amazon-ecr-credential-helper
 else
-    info "Git name is already configured as: $(git config --global user.name)"
+  info "Docker already installed"
 fi
 
-# Tell the user what to do next
 section "Setting up AWS Session Manager Plugin"
 if ! command_exists session-manager-plugin; then
   info "Installing AWS Session Manager Plugin"
   curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "/tmp/session-manager-plugin.deb"
   sudo dpkg -i "/tmp/session-manager-plugin.deb"
   rm "/tmp/session-manager-plugin.deb"
-  
-  # Add Session Manager helper function to .zshrc
-  cat >> "$HOME/.zshrc" << 'EOL'
-
-# AWS Session Manager helper for connecting to EC2 instances
-function ssm-connect() {
-  if [ -z "$1" ]; then
-    echo "Usage: ssm-connect <instance-id>"
-    return 1
-  fi
-  
-  aws ssm start-session --target "$1"
-}
-
-# Function to list EC2 instances and connect via SSM
-function ssm-list-connect() {
-  instances=$(aws ec2 describe-instances \
-    --filters "Name=instance-state-name,Values=running" \
-    --query 'Reservations[*].Instances[*].{ID:InstanceId,Name:Tags[?Key==`Name`]|[0].Value}' \
-    --output json)
-  
-  if [ -z "$instances" ] || [ "$instances" = "[]" ]; then
-    echo "No running instances found"
-    return 1
-  fi
-  
-  # Format instances for display
-  echo "$instances" | jq -r '.[][] | "\(.ID) - \(.Name // "unnamed")"' > /tmp/instances.txt
-  
-  # Select instance with fzf
-  selected=$(cat /tmp/instances.txt | fzf --height 15 --reverse)
-  rm /tmp/instances.txt
-  
-  if [ -n "$selected" ]; then
-    instance_id=$(echo "$selected" | awk '{print $1}')
-    echo "Connecting to instance $instance_id..."
-    aws ssm start-session --target "$instance_id"
-  else
-    echo "No instance selected"
-  fi
-}
-EOL
 else
   info "AWS Session Manager Plugin already installed"
 fi
@@ -656,7 +661,7 @@ if command -v /mnt/c/Program\ Files/1Password/app/8/op.exe &> /dev/null || comma
   mkdir -p "$HOME/.1password"
   
   # Create wrapper script for 1Password CLI
-  cat > "$HOME/.1password/op" << 'EOL'
+  cat > "$HOME/.1password/op" << 'EOF'
 #!/bin/bash
 # 1Password CLI wrapper for WSL
 
@@ -672,25 +677,27 @@ fi
 
 # Run 1Password CLI with all arguments passed to this script
 "$OP_PATH" "$@"
-EOL
+EOF
 
   # Make the wrapper script executable
   chmod +x "$HOME/.1password/op"
   
   # Add 1Password CLI to PATH
-  cat >> "$HOME/.zshrc" << 'EOL'
-
-# 1Password CLI integration
-export PATH="$HOME/.1password:$PATH"
+  if ! grep -q "PATH.*\.1password" "$HOME/.zshrc"; then
+    echo 'export PATH="$HOME/.1password:$PATH"' >> "$HOME/.zshrc"
+  fi
+  
+  # Add 1Password helper functions to AWS tools
+  cat >> "$HOME/.aws-tools/aws-functions.sh" << 'EOF'
 
 # 1Password helper functions
-function op-signin() {
+op-signin() {
   eval $(op signin)
   echo "1Password signin successful. Session token has been set."
 }
 
 # Function to get AWS credentials from 1Password
-function op-aws() {
+op-aws() {
   if [ -z "$1" ]; then
     echo "Usage: op-aws <item-name>"
     return 1
@@ -719,7 +726,7 @@ function op-aws() {
 }
 
 # Function to get SSH key from 1Password
-function op-ssh() {
+op-ssh() {
   if [ -z "$1" ]; then
     echo "Usage: op-ssh <item-name> [field-name]"
     echo "Field name is optional, defaults to 'private key'"
@@ -751,7 +758,7 @@ function op-ssh() {
   
   echo "SSH key from 1Password item '$1' has been loaded"
 }
-EOL
+EOF
 
   # Install jq for JSON parsing (needed for op-aws function)
   sudo apt install -y jq
@@ -782,22 +789,11 @@ if ! command_exists terraform; then
   # Enable Terraform autocompletion
   terraform -install-autocomplete
   
-  # Add Terraform aliases to .zshrc
-  cat >> "$HOME/.zshrc" << 'EOL'
-
-# Terraform shortcuts
-alias tf="terraform"
-alias tfi="terraform init"
-alias tfp="terraform plan"
-alias tfa="terraform apply"
-alias tfd="terraform destroy"
-alias tfo="terraform output"
-alias tfs="terraform state"
-alias tfv="terraform validate"
-alias tfw="terraform workspace"
+  # Add Terraform workspace functions to AWS tools
+  cat >> "$HOME/.aws-tools/aws-functions.sh" << 'EOF'
 
 # Function to select Terraform workspace
-function tfws() {
+tfws() {
   if [ ! -d ".terraform" ]; then
     echo "Not a Terraform directory or Terraform not initialized"
     return 1
@@ -809,22 +805,113 @@ function tfws() {
     return 1
   fi
   
-  selected=$(echo "$workspaces" | fzf --height 15 --reverse)
+  selected=$(echo "$workspaces" | fzf)
   if [ -n "$selected" ]; then
     terraform workspace select "$selected"
   else
     echo "No workspace selected"
   fi
 }
-EOL
+EOF
 else
   info "Terraform already installed"
 fi
+
+section "Installing additional productivity tools"
+
+# Install and configure tldr for simplified man pages
+info "Installing tldr for simplified command examples"
+sudo apt install -y tldr
+tldr --update
+
+# Install and configure direnv for environment switching
+info "Installing direnv for automatic environment switching"
+sudo apt install -y direnv
+if ! grep -q "direnv hook" "$HOME/.zshrc"; then
+  echo 'eval "$(direnv hook zsh)"' >> "$HOME/.zshrc"
+fi
+
+# Install and configure bat for better file viewing
+info "Installing bat for syntax highlighted file viewing"
+sudo apt install -y bat
+if ! command -v bat &> /dev/null; then
+  # On some systems, bat is installed as batcat
+  echo 'alias bat="batcat"' >> "$HOME/.zshrc"
+fi
+
+# Install and configure exa/eza for better directory listings
+if apt-cache show eza &> /dev/null; then
+  info "Installing eza for enhanced directory listings"
+  sudo apt install -y eza
+  if ! grep -q "alias ls=\"eza" "$HOME/.zshrc"; then
+    cat >> "$HOME/.zshrc" << 'EOF'
+
+# Use eza instead of ls
+alias ls="eza --icons"
+alias ll="eza --icons -la"
+alias lt="eza --icons -T --level=2"
+alias ltl="eza --icons -T --level=2 -l"
+EOF
+  fi
+elif apt-cache show exa &> /dev/null; then
+  info "Installing exa for enhanced directory listings"
+  sudo apt install -y exa
+  if ! grep -q "alias ls=\"exa" "$HOME/.zshrc"; then
+    cat >> "$HOME/.zshrc" << 'EOF'
+
+# Use exa instead of ls
+alias ls="exa --icons"
+alias ll="exa --icons -la"
+alias lt="exa --icons -T --level=2"
+alias ltl="exa --icons -T --level=2 -l"
+EOF
+  fi
+fi
+
+# Install AWS auto-completion
+info "Setting up AWS CLI autocompletion"
+if ! grep -q "aws_completer" "$HOME/.zshrc"; then
+  echo 'autoload -Uz compinit && compinit' >> "$HOME/.zshrc"
+  echo 'complete -C "$(which aws_completer)" aws' >> "$HOME/.zshrc"
+fi
+
+# Test AWS functions to make sure they work
+section "Testing AWS functions"
+chmod +x "$HOME/.aws-tools/aws-functions.sh"
+info "Attempting to source AWS functions in current session"
+
+# Try to source the AWS functions file
+if [ -f "$HOME/.aws-tools/aws-functions.sh" ]; then
+  source "$HOME/.aws-tools/aws-functions.sh"
+  if type awsregion > /dev/null 2>&1; then
+    info "✓ AWS functions successfully loaded"
+  else
+    error "AWS functions did not load correctly. Please check for errors."
+  fi
+else
+  error "AWS functions file not found at ~/.aws-tools/aws-functions.sh"
+fi
+
+section "Setup complete!"
+info "Your AWS Power User WSL environment has been configured with:"
+info "✓ ZSH with Oh My Zsh and Powerlevel10k theme optimized for AWS"
+info "✓ AWS CLI v2 with multi-account support and profile switching"
+info "✓ AWS utilities (SSO, SAM, CDK, etc.) installed with pipx"
+info "✓ AWS Session Manager Plugin for direct EC2 instance access"
+info "✓ Docker with ECR credential helper for AWS container registry"
+info "✓ Terraform with workspace management and shortcuts"
+info "✓ GitHub CLI with custom configuration"
+info "✓ Modern CLI tools (bat, eza/exa, fzf, direnv)"
+info "✓ Custom AWS helper functions for EC2, CloudWatch, Lambda"
+info "✓ 1Password CLI integration (if detected on Windows)"
+info "✓ Powerline fonts for better terminal experience"
 
 info "\nTo complete the setup:"
 info "1. Restart your terminal or run: exec zsh -l"
 info "2. Edit your AWS config file at ~/.aws/config with your actual credentials"
 info "3. To switch between AWS profiles, type 'awsp'"
+info "4. To switch AWS regions, type 'awsregion'"
+info "5. Configure your terminal font to use one of the Powerline fonts"
 
 # Setup success
 echo -e "\n${GREEN}AWS Power User WSL Setup complete! 🚀${NC}"
