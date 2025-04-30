@@ -28,6 +28,7 @@ The setup script automates the installation and configuration of:
 - **Powerlevel10k Theme**: Beautiful and informative prompt with AWS integration
 - **AWS CLI v2**: Latest version of the AWS Command Line Interface
 - **Multi-Account AWS Support**: Easily switch between AWS accounts and roles
+- **EKS Integration**: Complete Kubernetes toolset for AWS EKS clusters
 - **Development Tools**: Git, GitHub CLI, and AWS-specific development tools
 - **Terminal Customization**: Nerd Fonts for beautiful icons and improved readability
 
@@ -51,6 +52,7 @@ The setup script automates the installation and configuration of:
 - **AWS Tools**: AWS CLI, SSO utilities, SAM CLI, CDK, and Serverless Framework
 - **Docker Integration**: Docker with ECR credential helper
 - **Terraform Support**: Complete Terraform setup with workspace management
+- **Kubernetes/EKS Tools**: kubectl, eksctl, helm, k9s, and kubectx for EKS management
 - **Git Workflow**: GitHub CLI and useful Git aliases
 - **AWS Session Manager**: Connect to EC2 instances without SSH keys
 
@@ -79,6 +81,7 @@ After running the script, your environment will include:
 | **Dev Tools** | AWS SAM, CDK, Serverless Framework |
 | **IaC Tools** | Terraform with workspace management |
 | **Container Tools** | Docker with ECR integration |
+| **Kubernetes Tools** | kubectl, eksctl, Helm, k9s, kubectx |
 | **Git Tools** | GitHub CLI with custom aliases |
 | **Terminal Tools** | bat, eza/exa, fzf, direnv, tldr |
 | **Font** | Powerline Fonts |
@@ -115,6 +118,16 @@ After running the script, your environment will include:
   - `tfp` - Terraform plan
   - `tfa` - Terraform apply
   - `tfws` - Select Terraform workspace
+- **Kubernetes/EKS Shortcuts and Tools**:
+  - `k` - Shortcut for kubectl
+  - `eks-list` - List all EKS clusters
+  - `eks-switch` - Interactively switch between EKS clusters
+  - `eks-kubeconfig` - Update kubeconfig for a cluster
+  - `eks-manage` - Launch the EKS management tool
+  - `eks-pods` - List all pods across namespaces
+  - `eks-nodes` - List all nodes with status and resource usage
+  - `eks-shell` - Get a shell on a pod
+  - `eks-install-alb` - Install AWS Load Balancer Controller
 - **Modern CLI Tools**:
   - Use `bat` instead of `cat` for syntax highlighted file viewing
   - Use enhanced `ls`, `ll`, and `lt` for better directory listings
