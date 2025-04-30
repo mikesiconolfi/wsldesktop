@@ -36,29 +36,31 @@ install_terraform() {
         TERRAFORM_DOCS_VERSION="v0.16.0"
         TERRAFORM_DOCS_URL="https://github.com/terraform-docs/terraform-docs/releases/download/${TERRAFORM_DOCS_VERSION}/terraform-docs-${TERRAFORM_DOCS_VERSION}-$(uname | tr '[:upper:]' '[:lower:]')-amd64.tar.gz"
         
-        # Download and verify the file exists and has content
-        curl -sSLo /tmp/terraform-docs.tar.gz "$TERRAFORM_DOCS_URL" || {
+        # Download terraform-docs
+        curl -sSLo /tmp/terraform-docs.tar.gz "$TERRAFORM_DOCS_URL"
+        if [ $? -ne 0 ]; then
             error "Failed to download terraform-docs. Please install it manually."
             return 1
-        }
+        fi
         
         # Check if the download was successful
         if [ ! -s /tmp/terraform-docs.tar.gz ]; then
             error "Downloaded terraform-docs file is empty. Please install it manually."
             return 1
-        }
+        fi
         
         # Extract the file
-        tar -xzf /tmp/terraform-docs.tar.gz -C /tmp || {
+        tar -xzf /tmp/terraform-docs.tar.gz -C /tmp
+        if [ $? -ne 0 ]; then
             error "Failed to extract terraform-docs. Please install it manually."
             return 1
-        }
+        fi
         
         # Check if the binary was extracted
         if [ ! -f /tmp/terraform-docs ]; then
             error "terraform-docs binary not found after extraction. Please install it manually."
             return 1
-        }
+        fi
         
         chmod +x /tmp/terraform-docs
         sudo mv /tmp/terraform-docs /usr/local/bin/
