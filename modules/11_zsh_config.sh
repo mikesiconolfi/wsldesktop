@@ -121,6 +121,38 @@ echo "Type 'awsp' to switch AWS profiles"
 echo "Type 'awsregion' to switch AWS regions"
 EOF
     
+    # Add AWS profile to prompt
+    if [[ -f "$HOME/.p10k.zsh" ]]; then
+        info "Ensuring AWS profile is shown in prompt..."
+        if ! grep -q "aws" "$HOME/.p10k.zsh"; then
+            sed -i 's/typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(/typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(\n    aws\n    /' "$HOME/.p10k.zsh"
+        fi
+        
+        # Configure AWS segment to always show if not already configured
+        if ! grep -q "POWERLEVEL9K_AWS_SHOW_ON_COMMAND=''" "$HOME/.p10k.zsh"; then
+            info "Configuring AWS prompt segment to always show..."
+            cat >> "$HOME/.p10k.zsh" << 'EOF'
+
+# AWS profile configuration
+typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND=''  # Always show AWS profile
+typeset -g POWERLEVEL9K_AWS_CLASSES=(
+  '*prod*' PROD
+  '*stg*' STG
+  '*dev*' DEV
+  '*' DEFAULT
+)
+typeset -g POWERLEVEL9K_AWS_DEFAULT_FOREGROUND=7
+typeset -g POWERLEVEL9K_AWS_DEFAULT_BACKGROUND=1
+typeset -g POWERLEVEL9K_AWS_PROD_FOREGROUND=0
+typeset -g POWERLEVEL9K_AWS_PROD_BACKGROUND=1
+typeset -g POWERLEVEL9K_AWS_DEV_FOREGROUND=0
+typeset -g POWERLEVEL9K_AWS_DEV_BACKGROUND=2
+typeset -g POWERLEVEL9K_AWS_STG_FOREGROUND=0
+typeset -g POWERLEVEL9K_AWS_STG_BACKGROUND=3
+EOF
+        fi
+    fi
+    
     # Add Python virtual environment to PATH
     add_venv_to_path
     

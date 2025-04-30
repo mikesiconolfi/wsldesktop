@@ -89,12 +89,52 @@ awsp() {
     if [[ -n "$profile" ]]; then
         export AWS_PROFILE="$profile"
         echo "AWS Profile set to $profile"
+        
+        # Check if this is an SSO profile by looking for sso_start_url in the profile section
+        if grep -A 10 "\[profile $profile\]" ~/.aws/config | grep -q "sso_"; then
+            # Try to get caller identity, if it fails, trigger SSO login
+            if ! aws sts get-caller-identity &>/dev/null; then
+                echo "SSO credentials expired or missing. Starting SSO login process..."
+                aws sso login --profile "$profile"
+            fi
+        fi
+        
+        # Display current identity
+        aws sts get-caller-identity
     fi
+}
+
+# AWS SSO Login for all profiles
+aws-sso-login-all() {
+    echo "Starting SSO login for all SSO profiles..."
+    local sso_profiles=$(grep -A 5 "sso_" ~/.aws/config | grep -B 5 "sso_" | grep "^\[profile" | sed -E 's/\[profile (.*)\]/\1/g')
+    
+    if [[ -z "$sso_profiles" ]]; then
+        echo "No SSO profiles found in ~/.aws/config"
+        return 1
+    fi
+    
+    echo "Found the following SSO profiles:"
+    echo "$sso_profiles"
+    echo ""
+    
+    for profile in $sso_profiles; do
+        echo "Logging in to profile: $profile"
+        aws sso login --profile "$profile"
+    done
+    
+    echo "SSO login completed for all profiles"
 }
 
 # AWS Region Switcher
 awsregion() {
-    local regions=("us-east-1" "us-east-2" "us-west-1" "us-west-2" "eu-west-1" "eu-west-2" "eu-central-1" "ap-northeast-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "sa-east-1")
+    local regions=(
+        "us-east-1" "us-east-2" "us-west-1" "us-west-2" 
+        "ca-central-1" "ca-west-1"
+        "eu-west-1" "eu-west-2" "eu-central-1" 
+        "ap-northeast-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" 
+        "sa-east-1"
+    )
     local region=$(printf "%s\n" "${regions[@]}" | fzf)
     if [[ -n "$region" ]]; then
         export AWS_REGION="$region"
