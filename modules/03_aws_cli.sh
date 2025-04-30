@@ -19,7 +19,32 @@ install_aws_cli() {
     # Install AWS SSO utils
     if ! command_exists aws-sso-util; then
         info "Installing AWS SSO utils..."
-        pip3 install --user aws-sso-util
+        if command_exists pip3; then
+            # Create a virtual environment for Python packages
+            info "Creating Python virtual environment for AWS tools..."
+            mkdir -p "$HOME/.venvs"
+            python3 -m venv "$HOME/.venvs/aws-tools"
+            
+            # Install AWS SSO utils in the virtual environment
+            "$HOME/.venvs/aws-tools/bin/pip" install aws-sso-util >> "$LOG_FILE" 2>&1 || {
+                error "Failed to install AWS SSO utils. Please install it manually."
+            }
+            
+            # Create wrapper script
+            mkdir -p "$HOME/.local/bin"
+            cat > "$HOME/.local/bin/aws-sso-util" << 'EOF'
+#!/bin/bash
+$HOME/.venvs/aws-tools/bin/aws-sso-util "$@"
+EOF
+            chmod +x "$HOME/.local/bin/aws-sso-util"
+            
+            info "AWS SSO utils installed in virtual environment. Wrapper created at ~/.local/bin/aws-sso-util"
+        else
+            error "pip3 not found. Cannot install AWS SSO utils."
+            info "Please install python3-pip and try again."
+        fi
+    else
+        info "AWS SSO utils already installed"
     fi
     
     # Create AWS config directory if it doesn't exist

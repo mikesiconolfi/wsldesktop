@@ -8,7 +8,32 @@ install_aws_dev_tools() {
     # Install AWS SAM CLI if not already installed
     if ! command_exists sam; then
         info "Installing AWS SAM CLI..."
-        pip3 install --user aws-sam-cli
+        if command_exists pip3; then
+            # Create a virtual environment for Python packages if it doesn't exist
+            if [[ ! -d "$HOME/.venvs/aws-tools" ]]; then
+                info "Creating Python virtual environment for AWS tools..."
+                mkdir -p "$HOME/.venvs"
+                python3 -m venv "$HOME/.venvs/aws-tools"
+            fi
+            
+            # Install AWS SAM CLI in the virtual environment
+            "$HOME/.venvs/aws-tools/bin/pip" install aws-sam-cli >> "$LOG_FILE" 2>&1 || {
+                error "Failed to install AWS SAM CLI. Please install it manually."
+            }
+            
+            # Create wrapper script
+            mkdir -p "$HOME/.local/bin"
+            cat > "$HOME/.local/bin/sam" << 'EOF'
+#!/bin/bash
+$HOME/.venvs/aws-tools/bin/sam "$@"
+EOF
+            chmod +x "$HOME/.local/bin/sam"
+            
+            info "AWS SAM CLI installed in virtual environment. Wrapper created at ~/.local/bin/sam"
+        else
+            error "pip3 not found. Cannot install AWS SAM CLI."
+            info "Please install python3-pip and try again."
+        fi
     else
         info "AWS SAM CLI already installed"
     fi
@@ -50,7 +75,32 @@ install_aws_dev_tools() {
     # Install AWS CloudFormation Linter if not already installed
     if ! command_exists cfn-lint; then
         info "Installing AWS CloudFormation Linter..."
-        pip3 install --user cfn-lint
+        if command_exists pip3; then
+            # Create a virtual environment for Python packages if it doesn't exist
+            if [[ ! -d "$HOME/.venvs/aws-tools" ]]; then
+                info "Creating Python virtual environment for AWS tools..."
+                mkdir -p "$HOME/.venvs"
+                python3 -m venv "$HOME/.venvs/aws-tools"
+            fi
+            
+            # Install AWS CloudFormation Linter in the virtual environment
+            "$HOME/.venvs/aws-tools/bin/pip" install cfn-lint >> "$LOG_FILE" 2>&1 || {
+                error "Failed to install AWS CloudFormation Linter. Please install it manually."
+            }
+            
+            # Create wrapper script
+            mkdir -p "$HOME/.local/bin"
+            cat > "$HOME/.local/bin/cfn-lint" << 'EOF'
+#!/bin/bash
+$HOME/.venvs/aws-tools/bin/cfn-lint "$@"
+EOF
+            chmod +x "$HOME/.local/bin/cfn-lint"
+            
+            info "AWS CloudFormation Linter installed in virtual environment. Wrapper created at ~/.local/bin/cfn-lint"
+        else
+            error "pip3 not found. Cannot install AWS CloudFormation Linter."
+            info "Please install python3-pip and try again."
+        fi
     else
         info "AWS CloudFormation Linter already installed"
     fi

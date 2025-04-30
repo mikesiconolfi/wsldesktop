@@ -5,6 +5,14 @@
 install_terraform() {
     section "Setting up Terraform"
     
+    # Check for package manager lock
+    if [[ "$IGNORE_LOCKS" != "1" ]] && pgrep -f "apt-get|dpkg" > /dev/null; then
+        error "Another package manager process is running. Terraform installation will be skipped."
+        info "You can install Terraform manually later or re-run this module."
+        info "To bypass this check, use: IGNORE_LOCKS=1 ./setup-aws-wsl.sh"
+        return 1
+    fi
+    
     # Install Terraform if not already installed
     if ! command_exists terraform; then
         info "Installing Terraform..."
@@ -25,11 +33,36 @@ install_terraform() {
     # Install Terraform-docs if not already installed
     if ! command_exists terraform-docs; then
         info "Installing terraform-docs..."
-        curl -Lo ./terraform-docs.tar.gz https://github.com/terraform-docs/terraform-docs/releases/latest/download/terraform-docs-v0.16.0-$(uname)-amd64.tar.gz
-        tar -xzf terraform-docs.tar.gz
-        chmod +x terraform-docs
-        sudo mv terraform-docs /usr/local/bin/
-        rm terraform-docs.tar.gz
+        TERRAFORM_DOCS_VERSION="v0.16.0"
+        TERRAFORM_DOCS_URL="https://github.com/terraform-docs/terraform-docs/releases/download/${TERRAFORM_DOCS_VERSION}/terraform-docs-${TERRAFORM_DOCS_VERSION}-$(uname | tr '[:upper:]' '[:lower:]')-amd64.tar.gz"
+        
+        # Download and verify the file exists and has content
+        curl -sSLo /tmp/terraform-docs.tar.gz "$TERRAFORM_DOCS_URL" || {
+            error "Failed to download terraform-docs. Please install it manually."
+            return 1
+        }
+        
+        # Check if the download was successful
+        if [ ! -s /tmp/terraform-docs.tar.gz ]; then
+            error "Downloaded terraform-docs file is empty. Please install it manually."
+            return 1
+        }
+        
+        # Extract the file
+        tar -xzf /tmp/terraform-docs.tar.gz -C /tmp || {
+            error "Failed to extract terraform-docs. Please install it manually."
+            return 1
+        }
+        
+        # Check if the binary was extracted
+        if [ ! -f /tmp/terraform-docs ]; then
+            error "terraform-docs binary not found after extraction. Please install it manually."
+            return 1
+        }
+        
+        chmod +x /tmp/terraform-docs
+        sudo mv /tmp/terraform-docs /usr/local/bin/
+        rm -f /tmp/terraform-docs.tar.gz
     else
         info "terraform-docs already installed"
     fi

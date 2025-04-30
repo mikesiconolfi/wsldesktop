@@ -1,0 +1,214 @@
+=> AWS Power User WSL Setup
+
+--> This script will set up your WSL environment for AWS development
+--> You can select which components to install
+
+==> Checking dependencies
+
+--> All dependencies satisfied
+
+==> Setting up base system
+
+--> Updating package lists...
+Hit:1 http://security.ubuntu.com/ubuntu noble-security InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu noble InRelease                                
+Hit:3 http://archive.ubuntu.com/ubuntu noble-updates InRelease                        
+Hit:4 https://apt.releases.hashicorp.com noble InRelease                              
+Hit:5 https://deb.nodesource.com/node_18.x nodistro InRelease       
+Hit:6 http://archive.ubuntu.com/ubuntu noble-backports InRelease    
+Hit:7 https://downloads.1password.com/linux/debian/amd64 stable InRelease
+Reading package lists... Done
+--> Installing basic packages...
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 80819 (apt-get)
+N: Be aware that removing the lock file is not a solution and may break your system.
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+--> Oh My Zsh already installed
+--> Installing ZSH plugins...
+--> Base system setup complete
+
+==> Setting up theme and fonts
+
+--> Installing Powerlevel10k theme...
+Cloning into '/home/mike/.oh-my-zsh/custom/themes/powerlevel10k'...
+remote: Enumerating objects: 92, done.
+remote: Counting objects: 100% (92/92), done.
+remote: Compressing objects: 100% (72/72), done.
+remote: Total 92 (delta 18), reused 68 (delta 16), pack-reused 0 (from 0)
+Receiving objects: 100% (92/92), 350.08 KiB | 2.78 MiB/s, done.
+Resolving deltas: 100% (18/18), done.
+--> Installing Powerline fonts...
+Cloning into '/home/mike/powerline-fonts'...
+remote: Enumerating objects: 317, done.
+remote: Counting objects: 100% (317/317), done.
+remote: Compressing objects: 100% (245/245), done.
+remote: Total 317 (delta 73), reused 261 (delta 69), pack-reused 0 (from 0)
+Receiving objects: 100% (317/317), 10.74 MiB | 8.97 MiB/s, done.
+Resolving deltas: 100% (73/73), done.
+Copying fonts...
+xargs: warning: options --max-args and --replace/-I/-i are mutually exclusive, ignoring previous --max-args value
+Resetting font cache, this may take a moment...
+Powerline fonts installed to /home/mike/.local/share/fonts
+--> Setting up Powerlevel10k configuration...
+--> Theme and fonts setup complete
+
+==> Setting up AWS CLI and tools
+
+--> AWS CLI v2 already installed
+--> Installing AWS SSO utils...
+./modules/03_aws_cli.sh: line 22: pip3: command not found
+--> Creating backup of /home/mike/.aws/config to /home/mike/.aws/config.bak.20250430181556
+--> Creating backup of /home/mike/.aws/credentials to /home/mike/.aws/credentials.bak.20250430181556
+--> AWS config already exists, preserving existing configuration
+--> Setting up AWS profile switcher...
+--> AWS CLI and tools setup complete
+
+==> Setting up Docker and container tools
+
+--> Docker already installed
+--> Docker Compose already installed
+--> Installing Amazon ECR Credential Helper...
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 80819 (apt-get)
+N: Be aware that removing the lock file is not a solution and may break your system.
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+--> Docker config already exists, you may need to manually configure ECR credential helper
+--> Setting up ECR login function...
+--> Setting up Docker aliases...
+--> Docker and container tools setup complete
+
+==> Setting up Kubernetes and EKS tools
+
+--> kubectl already installed
+--> Installing eksctl...
+--> Installing Helm...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 11913  100 11913    0     0  83160      0 --:--:-- --:--:-- --:--:-- 82729
+Downloading https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz
+Verifying checksum... Done.
+Preparing to install helm into /usr/local/bin
+helm installed into /usr/local/bin/helm
+--> Installing k9s...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 35.2M  100 35.2M    0     0  11.9M      0  0:00:02  0:00:02 --:--:-- 14.3M
+--> Installing kubectx and kubens...
+Cloning into '/opt/kubectx'...
+remote: Enumerating objects: 1540, done.
+remote: Counting objects: 100% (469/469), done.
+remote: Compressing objects: 100% (110/110), done.
+remote: Total 1540 (delta 407), reused 360 (delta 359), pack-reused 1071 (from 2)
+Receiving objects: 100% (1540/1540), 931.36 KiB | 3.23 MiB/s, done.
+Resolving deltas: 100% (896/896), done.
+--> Creating backup of /home/mike/.kube/config to /home/mike/.kube/config.bak.20250430181607
+--> Setting up EKS helper functions...
+--> Setting up Kubernetes aliases...
+--> Kubernetes and EKS tools setup complete
+
+==> Setting up Terraform
+
+--> Terraform already installed
+--> Installing terraform-docs...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100     9  100     9    0     0     27      0 --:--:-- --:--:-- --:--:--    27
+
+gzip: stdin: not in gzip format
+tar: Child returned status 1
+tar: Error is not recoverable: exiting now
+chmod: cannot access 'terraform-docs': No such file or directory
+mv: cannot stat 'terraform-docs': No such file or directory
+--> tflint already installed
+--> Setting up Terraform aliases and functions...
+--> Terraform setup complete
+
+==> Setting up AWS Session Manager
+
+--> Installing AWS Session Manager plugin...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 3816k  100 3816k    0     0  4948k      0 --:--:-- --:--:-- --:--:-- 4950k
+dpkg: error: dpkg frontend lock was locked by another process with pid 80819
+Note: removing the lock file is always wrong, can damage the locked area
+and the entire system. See <https://wiki.debian.org/Teams/Dpkg/FAQ#db-lock>.
+--> Setting up Session Manager helper functions...
+--> AWS Session Manager setup complete
+
+==> Setting up modern CLI tools
+
+--> Installing bat...
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 80819 (apt-get)
+N: Be aware that removing the lock file is not a solution and may break your system.
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+--> Installing eza...
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 80819 (apt-get)
+N: Be aware that removing the lock file is not a solution and may break your system.
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 1019k  100 1019k    0     0  1672k      0 --:--:-- --:--:-- --:--:-- 4301k
+--> fzf already installed
+--> Installing direnv...
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 80819 (apt-get)
+N: Be aware that removing the lock file is not a solution and may break your system.
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+--> Installing tldr...
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 80819 (apt-get)
+N: Be aware that removing the lock file is not a solution and may break your system.
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+--> jq already installed
+--> Installing yq...
+--> Setting up modern CLI tool aliases...
+--> Modern CLI tools setup complete
+
+==> Setting up 1Password integration
+
+--> 1Password CLI not detected in Windows, skipping integration
+
+==> Setting up AWS development tools
+
+--> Installing AWS SAM CLI...
+./modules/10_aws_dev_tools.sh: line 11: pip3: command not found
+--> Installing AWS CDK...
+
+added 1 package in 4s
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.3.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.3.0
+npm notice To update run: npm install -g npm@11.3.0
+npm notice
+--> Installing Serverless Framework...
+
+added 71 packages in 8s
+
+20 packages are looking for funding
+  run `npm fund` for details
+--> Installing AWS Amplify CLI...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+
+added 47 packages in 1m
+
+12 packages are looking for funding
+  run `npm fund` for details
+--> AWS Copilot CLI already installed
+--> Installing AWS CloudFormation Linter...
+./modules/10_aws_dev_tools.sh: line 53: pip3: command not found
+--> Setting up AWS development tool aliases...
+--> AWS development tools setup complete
+
+==> Setting up ZSH configuration
+
+--> Creating backup of /home/mike/.zshrc to /home/mike/.zshrc.bak.20250430181728
+--> Creating .zshrc configuration...
+--> ZSH configuration setup complete
+
+==> Setup Complete!
+
+--> Your AWS Power User WSL environment has been set up successfully.
+--> Please restart your terminal or run 'exec zsh' to apply all changes.
+--> If you installed Powerline fonts, you may need to configure your terminal to use them.
+Would you like to switch to ZSH now? [y/N] n 

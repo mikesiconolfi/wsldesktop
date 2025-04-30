@@ -5,6 +5,22 @@
 configure_zsh() {
     section "Setting up ZSH configuration"
     
+    # Verify Oh My Zsh is properly installed
+    if [[ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]]; then
+        error "Oh My Zsh main script is missing. Attempting to fix..."
+        
+        # Download the main script directly
+        curl -fsSL -o "$HOME/.oh-my-zsh/oh-my-zsh.sh" https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/oh-my-zsh.sh
+        chmod +x "$HOME/.oh-my-zsh/oh-my-zsh.sh"
+        
+        # Check if the download was successful
+        if [[ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]]; then
+            error "Failed to download Oh My Zsh main script. ZSH configuration may not work properly."
+            info "You may need to reinstall Oh My Zsh manually: sh -c \"$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\""
+            return 1
+        fi
+    fi
+    
     # Backup existing .zshrc if it exists
     backup_file "$HOME/.zshrc"
     
@@ -38,7 +54,11 @@ plugins=(
 )
 
 # Source oh-my-zsh
-source $ZSH/oh-my-zsh.sh
+if [[ -f "$ZSH/oh-my-zsh.sh" ]]; then
+  source "$ZSH/oh-my-zsh.sh"
+else
+  echo "Warning: Oh My Zsh main script not found at $ZSH/oh-my-zsh.sh"
+fi
 
 # User configuration
 export LANG=en_US.UTF-8
@@ -100,6 +120,9 @@ echo "AWS Power User WSL Environment loaded!"
 echo "Type 'awsp' to switch AWS profiles"
 echo "Type 'awsregion' to switch AWS regions"
 EOF
+    
+    # Add Python virtual environment to PATH
+    add_venv_to_path
     
     info "ZSH configuration setup complete"
 }

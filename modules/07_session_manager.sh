@@ -5,6 +5,14 @@
 install_session_manager() {
     section "Setting up AWS Session Manager"
     
+    # Check for package manager lock
+    if [[ "$IGNORE_LOCKS" != "1" ]] && pgrep -f "apt-get|dpkg" > /dev/null; then
+        error "Another package manager process is running. Session Manager installation will be skipped."
+        info "You can install Session Manager manually later or re-run this module."
+        info "To bypass this check, use: IGNORE_LOCKS=1 ./setup-aws-wsl.sh"
+        return 1
+    fi
+    
     # Install Session Manager plugin if not already installed
     if ! command_exists session-manager-plugin; then
         info "Installing AWS Session Manager plugin..."

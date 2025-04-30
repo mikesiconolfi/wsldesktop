@@ -7,14 +7,44 @@
 # Source common functions
 source "$(dirname "$0")/modules/00_common.sh"
 
+# Initialize log file
+init_log
+
 # Display welcome message
 section "AWS Power User WSL Setup"
 info "This script will set up your WSL environment for AWS development"
 info "You can select which components to install"
+info "Installation log will be saved to: $LOG_FILE"
+
+# Check for stale lock files
+if pgrep -f "apt-get|dpkg" > /dev/null; then
+    info "Checking for package manager processes..."
+    ps_output=$(ps aux | grep -E 'apt-get|dpkg' | grep -v grep)
+    echo "$ps_output" >> "$LOG_FILE"
+    
+    if [[ -n "$ps_output" ]]; then
+        info "Found the following package manager processes:"
+        echo "$ps_output"
+        info "You can either:"
+        info "1. Wait for these processes to complete"
+        info "2. Terminate them if safe to do so: sudo kill <PID>"
+        info "3. Run with IGNORE_LOCKS=1 to bypass (if you're sure it's safe):"
+        info "   IGNORE_LOCKS=1 ./setup-aws-wsl.sh"
+    else
+        info "No actual package manager processes found, but lock detection triggered."
+        info "This might be due to stale lock files. You can try:"
+        info "1. Run with IGNORE_LOCKS=1 to bypass: IGNORE_LOCKS=1 ./setup-aws-wsl.sh"
+        info "2. Remove lock files (if you're sure no apt process is running):"
+        info "   sudo rm /var/lib/apt/lists/lock"
+        info "   sudo rm /var/lib/dpkg/lock"
+        info "   sudo rm /var/lib/dpkg/lock-frontend"
+    fi
+fi
 
 # Check dependencies
 check_dependencies || {
-    error "Failed to install required dependencies. Please install them manually and try again."
+    error "Failed to install required prerequisites. Please fix the issues and try again."
+    info "Check the log file for details: $LOG_FILE"
     exit 1
 }
 
@@ -37,8 +67,30 @@ select_components() {
     
     local selected=()
     
-    echo "Select components to install (use space to select/deselect, enter to confirm):"
-    selected=($(for i in "${!options[@]}"; do echo "$i ${options[$i]}"; done | fzf --multi --height=50% --reverse --header="Space to select, Enter to confirm" | awk '{print $1}'))
+    # Create a temporary file for fzf output
+    local tmp_file=$(mktemp)
+    
+    # Use process substitution to capture fzf output
+    echo "Select components to install (use SPACE to select/deselect, ENTER to confirm):"
+    
+    # Run fzf with explicit --bind for space to toggle selection
+    # and write results to the temporary file
+    (for i in "${!options[@]}"; do 
+        echo "$i ${options[$i]}"
+    done) | fzf --multi \
+              --height=50% \
+              --reverse \
+              --header="SPACE to select/deselect, ENTER to confirm" \
+              --bind="space:toggle+down" \
+              > "$tmp_file"
+    
+    # Read selected items from the temporary file
+    while read -r line; do
+        selected+=($(echo "$line" | awk '{print $1}'))
+    done < "$tmp_file"
+    
+    # Clean up
+    rm "$tmp_file"
     
     # Check if "All Components" was selected
     if [[ " ${selected[*]} " =~ " 11 " ]]; then
@@ -109,8 +161,12 @@ main() {
     
     if [[ ${#selected_components[@]} -eq 0 ]]; then
         info "No components selected. Exiting."
+        echo "No components selected. Installation aborted." >> "$LOG_FILE"
         exit 0
     fi
+    
+    # Log selected components
+    echo "Selected components: ${selected_components[*]}" >> "$LOG_FILE"
     
     # Install selected components
     install_selected_components "${selected_components[@]}"
@@ -120,10 +176,17 @@ main() {
     info "Your AWS Power User WSL environment has been set up successfully."
     info "Please restart your terminal or run 'exec zsh' to apply all changes."
     info "If you installed Powerline fonts, you may need to configure your terminal to use them."
+    info "Installation log has been saved to: $LOG_FILE"
+    
+    # Log completion
+    echo "=== Installation completed successfully at $(date) ===" >> "$LOG_FILE"
     
     # Ask to switch to ZSH
     if confirm "Would you like to switch to ZSH now?"; then
+        echo "User chose to switch to ZSH" >> "$LOG_FILE"
         exec zsh -l
+    else
+        echo "User chose not to switch to ZSH" >> "$LOG_FILE"
     fi
 }
 

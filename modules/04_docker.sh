@@ -5,6 +5,14 @@
 install_docker() {
     section "Setting up Docker and container tools"
     
+    # Check for package manager lock
+    if [[ "$IGNORE_LOCKS" != "1" ]] && pgrep -f "apt-get|dpkg" > /dev/null; then
+        error "Another package manager process is running. Docker installation will be skipped."
+        info "You can install Docker manually later or re-run this module."
+        info "To bypass this check, use: IGNORE_LOCKS=1 ./setup-aws-wsl.sh"
+        return 1
+    fi
+    
     # Install Docker if not already installed
     if ! command_exists docker; then
         info "Installing Docker..."

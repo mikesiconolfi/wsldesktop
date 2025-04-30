@@ -5,6 +5,14 @@
 install_modern_cli() {
     section "Setting up modern CLI tools"
     
+    # Check for package manager lock
+    if [[ "$IGNORE_LOCKS" != "1" ]] && pgrep -f "apt-get|dpkg" > /dev/null; then
+        error "Another package manager process is running. Modern CLI tools installation will be skipped."
+        info "You can install these tools manually later or re-run this module."
+        info "To bypass this check, use: IGNORE_LOCKS=1 ./setup-aws-wsl.sh"
+        return 1
+    fi
+    
     # Install bat (better cat) if not already installed
     if ! command_exists bat; then
         info "Installing bat..."
