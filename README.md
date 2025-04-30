@@ -142,6 +142,12 @@ After running the script, your environment will include:
 
 The script can be run multiple times safely - it will only install packages that aren't already installed.
 
+### Dependencies
+
+The script will automatically check for and install these required dependencies:
+- `fzf`: Used for interactive selection menus
+- Other dependencies will be installed as needed for selected components
+
 ## Post-Installation
 
 After running the script:

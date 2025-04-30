@@ -4,7 +4,8 @@
 # This script provides a modular setup for AWS development on WSL
 # Users can select which components they want to install
 
-set -e  # Exit on error
+# Remove set -e to prevent script from exiting on errors
+# set -e  # Exit on error
 
 # Color codes for pretty output
 GREEN='\033[0;32m'
@@ -44,6 +45,25 @@ confirm() {
             return 1
             ;;
     esac
+}
+
+# Check for required dependencies and install if missing
+check_and_install_dependency() {
+    local package=$1
+    if ! command_exists "$package"; then
+        info "Installing required dependency: $package"
+        sudo apt-get update && sudo apt-get install -y "$package" || {
+            error "Failed to install $package"
+            return 1
+        }
+    fi
+}
+
+# Check for fzf which is required for interactive selections
+check_and_install_dependency "fzf" || {
+    error "Failed to install required dependency: fzf"
+    echo "Please install fzf manually with: sudo apt-get install -y fzf"
+    exit 1
 }
 
 # Check if we're running in WSL
@@ -124,6 +144,9 @@ toggle_component() {
     local index=$1
     local component="${all_components[$index-1]}"
     
+    # Debug output
+    info "Toggling component: $component (${components[$component]})"
+    
     # Check if already selected
     local is_selected=false
     local i=0
@@ -141,7 +164,13 @@ toggle_component() {
     # If not already selected, add it
     if ! $is_selected; then
         selected_components+=("$component")
+        info "Added component: $component"
+    else
+        info "Removed component: $component"
     fi
+    
+    # Debug output of current selections
+    info "Current selections: ${selected_components[*]}"
 }
 
 # Function to select all components
@@ -164,23 +193,28 @@ while true; do
     display_menu
     read -p "Enter your choice: " choice
     
+    # Debug output
+    info "You entered: $choice"
+    
     case "$choice" in
         [1-9]|[1-9][0-9])
             # Check if the number is within range
             if (( choice >= 1 && choice <= ${#all_components[@]} )); then
                 toggle_component "$choice"
+                # No pause needed
             else
                 info "Invalid selection. Please try again."
-                read -p "Press enter to continue..."
             fi
             ;;
         a|A)
             select_all
+            info "Selected all components"
             ;;
         n|N)
             select_none
             # Base is always selected
             selected_components=("base")
+            info "Deselected all components except base"
             ;;
         i|I)
             # Make sure base is always selected
@@ -214,7 +248,6 @@ while true; do
             ;;
         *)
             info "Invalid selection. Please try again."
-            read -p "Press enter to continue..."
             ;;
     esac
 done
