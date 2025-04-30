@@ -218,7 +218,7 @@ while true; do
             ;;
         i|I)
             # Make sure base is always selected
-            local has_base=false
+            has_base=false
             for component in "${selected_components[@]}"; do
                 if [[ "$component" == "base" ]]; then
                     has_base=true
@@ -391,8 +391,14 @@ install_components() {
             info "AWS CLI v2 is already installed"
         fi
         
-        # Create a sample AWS config file if it doesn't exist
-        if [ ! -f "$HOME/.aws/config" ]; then
+        # Check for existing AWS config and credentials
+        if [ -f "$HOME/.aws/config" ]; then
+            info "Existing AWS config found at ~/.aws/config"
+            # Create a backup of the existing config
+            cp "$HOME/.aws/config" "$HOME/.aws/config.backup.$(date +%Y%m%d%H%M%S)"
+            info "Created backup of your AWS config at ~/.aws/config.backup.$(date +%Y%m%d%H%M%S)"
+            info "Your existing AWS configuration will be preserved"
+        else
             info "Creating sample AWS config file"
             mkdir -p "$HOME/.aws"
             cat > "$HOME/.aws/config" << 'EOF'
@@ -426,6 +432,15 @@ output = json
 EOF
             info "Created sample AWS config at ~/.aws/config"
             info "Please edit this file with your actual AWS account details"
+        fi
+        
+        # Check for existing AWS credentials
+        if [ -f "$HOME/.aws/credentials" ]; then
+            info "Existing AWS credentials found at ~/.aws/credentials"
+            # Create a backup of the existing credentials
+            cp "$HOME/.aws/credentials" "$HOME/.aws/credentials.backup.$(date +%Y%m%d%H%M%S)"
+            info "Created backup of your AWS credentials at ~/.aws/credentials.backup.$(date +%Y%m%d%H%M%S)"
+            info "Your existing AWS credentials will be preserved"
         fi
         
         log "AWS CLI v2 installation completed"
@@ -916,8 +931,17 @@ EOF
             info "kubectx and kubens already installed"
         fi
         
-        # Create Kubernetes config directory if it doesn't exist
-        mkdir -p "$HOME/.kube"
+        # Check for existing Kubernetes config
+        if [ -f "$HOME/.kube/config" ]; then
+            info "Existing Kubernetes config found at ~/.kube/config"
+            # Create a backup of the existing config
+            cp "$HOME/.kube/config" "$HOME/.kube/config.backup.$(date +%Y%m%d%H%M%S)"
+            info "Created backup of your Kubernetes config at ~/.kube/config.backup.$(date +%Y%m%d%H%M%S)"
+            info "Your existing Kubernetes cluster configurations will be preserved"
+        else
+            # Create Kubernetes config directory if it doesn't exist
+            mkdir -p "$HOME/.kube"
+        fi
         
         # Add EKS helper functions if AWS helpers are selected
         if is_selected "aws_helpers"; then
@@ -965,6 +989,15 @@ eks-kubeconfig() {
   local cluster_name="$1"
   local region="${2:-${AWS_REGION:-$(aws configure get region)}}"
   
+  # Check if we already have a kubeconfig and create a backup if needed
+  if [ -f "$HOME/.kube/config" ]; then
+    # Only create a backup if we haven't already done so in this session
+    if [ ! -f "$HOME/.kube/config.eks-update-backup" ]; then
+      cp "$HOME/.kube/config" "$HOME/.kube/config.eks-update-backup"
+      echo "Created backup of your kubeconfig at ~/.kube/config.eks-update-backup"
+    fi
+  fi
+  
   echo "Updating kubeconfig for EKS cluster $cluster_name in region $region"
   aws eks update-kubeconfig --name "$cluster_name" --region "$region"
   echo "Kubeconfig updated. Current context: $(kubectl config current-context)"
@@ -1006,6 +1039,14 @@ eks-update-credentials() {
     
     if [[ -n "$cluster_name" && -n "$region" ]]; then
       echo "Updating credentials for EKS cluster $cluster_name in region $region"
+      
+      # Check if we already have a kubeconfig and create a backup if needed
+      if [ -f "$HOME/.kube/config" ]; then
+        # Create a backup with context name
+        cp "$HOME/.kube/config" "$HOME/.kube/config.backup.$(date +%Y%m%d%H%M%S)"
+        echo "Created backup of your kubeconfig at ~/.kube/config.backup.$(date +%Y%m%d%H%M%S)"
+      fi
+      
       aws eks update-kubeconfig --name "$cluster_name" --region "$region"
     else
       echo "Could not extract cluster name and region from context: $context"
@@ -1254,6 +1295,14 @@ update_kubeconfig() {
     region=${region:-us-east-1}
     
     info "Updating kubeconfig for EKS cluster $cluster_name in region $region"
+    
+    # Check if we already have a kubeconfig and create a backup if needed
+    if [ -f "$HOME/.kube/config" ]; then
+        # Create a timestamped backup
+        cp "$HOME/.kube/config" "$HOME/.kube/config.backup.$(date +%Y%m%d%H%M%S)"
+        info "Created backup of your kubeconfig at ~/.kube/config.backup.$(date +%Y%m%d%H%M%S)"
+    fi
+    
     aws eks update-kubeconfig --name "$cluster_name" --region "$region"
     
     info "Kubeconfig updated. Current context: $(kubectl config current-context)"
@@ -2108,6 +2157,7 @@ fi
 
 if is_selected "aws_cli"; then
     info "2. Edit your AWS config file at ~/.aws/config with your actual credentials"
+    info "   (Your existing AWS configuration has been preserved and backed up)"
     info "3. To switch between AWS profiles, type 'awsp'"
     info "4. To switch AWS regions, type 'awsregion'"
 fi
