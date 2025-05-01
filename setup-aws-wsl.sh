@@ -62,6 +62,7 @@ select_components() {
         "1Password Integration"
         "AWS Development Tools"
         "ZSH Configuration"
+        "NeoVim"
         "All Components"
     )
     
@@ -93,8 +94,8 @@ select_components() {
     rm "$tmp_file"
     
     # Check if "All Components" was selected
-    if [[ " ${selected[*]} " =~ " 11 " ]]; then
-        selected=(0 1 2 3 4 5 6 7 8 9 10)
+    if [[ " ${selected[*]} " =~ " 12 " ]]; then
+        selected=(0 1 2 3 4 5 6 7 8 9 10 11)
     fi
     
     echo "${selected[@]}"
@@ -149,6 +150,10 @@ install_selected_components() {
             10)
                 source "$(dirname "$0")/modules/11_zsh_config.sh"
                 configure_zsh
+                ;;
+            11)
+                source "$(dirname "$0")/modules/12_neovim.sh"
+                install_neovim
                 ;;
         esac
     done

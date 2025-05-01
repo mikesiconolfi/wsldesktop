@@ -76,6 +76,7 @@ After running the script, your environment will include:
 | **Kubernetes Tools** | kubectl, eksctl, Helm, k9s, kubectx |
 | **Git Tools** | GitHub CLI with custom aliases |
 | **Terminal Tools** | bat, eza/exa, fzf, direnv, tldr |
+| **Editor** | NeoVim with AWS-specific plugins and configurations |
 | **Font** | Powerline Fonts |
 | **ZSH Plugins** | git, aws, docker, vscode, autosuggestions, syntax-highlighting |
 
