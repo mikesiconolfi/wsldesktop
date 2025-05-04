@@ -36,7 +36,7 @@ install_theme_and_fonts() {
         cat >> "$HOME/.p10k.zsh" << 'EOF'
 
 # AWS profile configuration
-typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND=''  # Always show AWS profile
+# Note: We don't set POWERLEVEL9K_AWS_SHOW_ON_COMMAND to use default behavior
 typeset -g POWERLEVEL9K_AWS_CLASSES=(
   '*prod*' PROD
   '*stg*' STG

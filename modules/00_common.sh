@@ -185,3 +185,10 @@ log_command() {
     echo "=== Command completed with status: $result ===" >> "$LOG_FILE"
     return $result
 }
+
+# Print warning message
+warning() {
+    local message="WARNING: $1"
+    echo -e "${YELLOW}WARNING:${NC} $1"
+    echo "$message" >> "$LOG_FILE"
+}

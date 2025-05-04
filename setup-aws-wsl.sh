@@ -2,7 +2,7 @@
 
 # AWS Power User WSL Setup Script - Main Script
 # This script provides a modular setup for AWS development on WSL
-# Users can select which components they want to install
+# Users can select which components they want to install or uninstall
 
 # Source common functions
 source "$(dirname "$0")/modules/00_common.sh"
@@ -12,9 +12,18 @@ init_log
 
 # Display welcome message
 section "AWS Power User WSL Setup"
-info "This script will set up your WSL environment for AWS development"
-info "You can select which components to install"
-info "Installation log will be saved to: $LOG_FILE"
+info "This script will set up or uninstall your WSL environment for AWS development"
+info "You can select which components to install or uninstall"
+info "Log will be saved to: $LOG_FILE"
+
+# Ask if user wants to install or uninstall
+MODE="install"
+if confirm "Would you like to uninstall components or revert to previous configurations? (No = install/Yes = uninstall)"; then
+    MODE="uninstall"
+    info "Uninstall mode selected"
+else
+    info "Install mode selected"
+fi
 
 # Check for stale lock files
 if pgrep -f "apt-get|dpkg" > /dev/null; then
@@ -63,6 +72,8 @@ select_components() {
         "AWS Development Tools"
         "ZSH Configuration"
         "NeoVim"
+        "Windows Nerd Fonts (Install fonts to Windows)"
+        "VSCode Nerd Fonts Configuration"
         "All Components"
     )
     
@@ -94,8 +105,8 @@ select_components() {
     rm "$tmp_file"
     
     # Check if "All Components" was selected
-    if [[ " ${selected[*]} " =~ " 12 " ]]; then
-        selected=(0 1 2 3 4 5 6 7 8 9 10 11)
+    if [[ " ${selected[*]} " =~ " 14 " ]]; then
+        selected=(0 1 2 3 4 5 6 7 8 9 10 11 12 13)
     fi
     
     echo "${selected[@]}"
@@ -155,43 +166,57 @@ install_selected_components() {
                 source "$(dirname "$0")/modules/12_neovim.sh"
                 install_neovim
                 ;;
+            12)
+                source "$(dirname "$0")/modules/14_windows_fonts.sh"
+                install_windows_fonts
+                ;;
+            13)
+                source "$(dirname "$0")/modules/15_vscode_fonts.sh"
+                configure_vscode_fonts
+                ;;
         esac
     done
 }
 
 # Main function
 main() {
-    # Select components to install
-    local selected_components=($(select_components))
-    
-    if [[ ${#selected_components[@]} -eq 0 ]]; then
-        info "No components selected. Exiting."
-        echo "No components selected. Installation aborted." >> "$LOG_FILE"
-        exit 0
-    fi
-    
-    # Log selected components
-    echo "Selected components: ${selected_components[*]}" >> "$LOG_FILE"
-    
-    # Install selected components
-    install_selected_components "${selected_components[@]}"
-    
-    # Final message
-    section "Setup Complete!"
-    info "Your AWS Power User WSL environment has been set up successfully."
-    info "Please restart your terminal or run 'exec zsh' to apply all changes."
-    info "If you installed Powerline fonts, you may need to configure your terminal to use them."
-    info "Installation log has been saved to: $LOG_FILE"
-    
-    # Log completion
-    echo "=== Installation completed successfully at $(date) ===" >> "$LOG_FILE"
-    
-    # Ask to switch to ZSH
-    if confirm "Would you like to switch to ZSH now?"; then
-        echo "User chose to switch to ZSH" >> "$LOG_FILE"
-        exec zsh -l
+    if [[ "$MODE" == "install" ]]; then
+        # Select components to install
+        local selected_components=($(select_components))
+        
+        if [[ ${#selected_components[@]} -eq 0 ]]; then
+            info "No components selected. Exiting."
+            echo "No components selected. Installation aborted." >> "$LOG_FILE"
+            exit 0
+        fi
+        
+        # Log selected components
+        echo "Selected components: ${selected_components[*]}" >> "$LOG_FILE"
+        
+        # Install selected components
+        install_selected_components "${selected_components[@]}"
+        
+        # Final message
+        section "Setup Complete!"
+        info "Your AWS Power User WSL environment has been set up successfully."
+        info "Please restart your terminal or run 'exec zsh' to apply all changes."
+        info "If you installed Powerline fonts, you may need to configure your terminal to use them."
+        info "Installation log has been saved to: $LOG_FILE"
+        
+        # Log completion
+        echo "=== Installation completed successfully at $(date) ===" >> "$LOG_FILE"
+        
+        # Ask to switch to ZSH
+        if confirm "Would you like to switch to ZSH now?"; then
+            echo "User chose to switch to ZSH" >> "$LOG_FILE"
+            exec zsh -l
+        else
+            echo "User chose not to switch to ZSH" >> "$LOG_FILE"
+        fi
     else
-        echo "User chose not to switch to ZSH" >> "$LOG_FILE"
+        # Uninstall mode
+        source "$(dirname "$0")/modules/13_uninstall.sh"
+        uninstall_wsl_desktop
     fi
 }
 
