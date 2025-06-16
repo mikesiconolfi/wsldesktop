@@ -75,6 +75,186 @@ setup_directories() {
     log "Setup directories created"
 }
 
+# Check sudo access
+check_sudo_access() {
+    if ! sudo -n true 2>/dev/null; then
+        print_info "This script may need to install system packages."
+        print_info "You may be prompted for your password to install prerequisites."
+        
+        # Test sudo access
+        if ! sudo true; then
+            print_warning "Unable to obtain sudo access."
+            print_warning "Some features may not work without system package installation."
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# =============================================================================
+# PREREQUISITE INSTALLATION
+# =============================================================================
+
+install_system_prerequisites() {
+    print_section "Installing System Prerequisites"
+    
+    # Detect package manager
+    local pkg_manager=""
+    if command_exists apt; then
+        pkg_manager="apt"
+    elif command_exists yum; then
+        pkg_manager="yum"
+    elif command_exists dnf; then
+        pkg_manager="dnf"
+    elif command_exists pacman; then
+        pkg_manager="pacman"
+    elif command_exists brew; then
+        pkg_manager="brew"
+    else
+        print_error "No supported package manager found"
+        return 1
+    fi
+    
+    print_info "Detected package manager: $pkg_manager"
+    
+    # Install prerequisites based on package manager
+    case $pkg_manager in
+        "apt")
+            print_info "Installing prerequisites with apt..."
+            sudo apt update
+            sudo apt install -y \
+                python3 \
+                python3-pip \
+                python3-venv \
+                python3-dev \
+                python3-full \
+                build-essential \
+                curl \
+                wget \
+                git \
+                jq \
+                unzip \
+                tar \
+                ca-certificates \
+                gnupg \
+                lsb-release
+            ;;
+        "yum")
+            print_info "Installing prerequisites with yum..."
+            sudo yum update -y
+            sudo yum install -y \
+                python3 \
+                python3-pip \
+                python3-venv \
+                python3-devel \
+                gcc \
+                gcc-c++ \
+                make \
+                curl \
+                wget \
+                git \
+                jq \
+                unzip \
+                tar \
+                ca-certificates
+            ;;
+        "dnf")
+            print_info "Installing prerequisites with dnf..."
+            sudo dnf update -y
+            sudo dnf install -y \
+                python3 \
+                python3-pip \
+                python3-venv \
+                python3-devel \
+                gcc \
+                gcc-c++ \
+                make \
+                curl \
+                wget \
+                git \
+                jq \
+                unzip \
+                tar \
+                ca-certificates
+            ;;
+        "pacman")
+            print_info "Installing prerequisites with pacman..."
+            sudo pacman -Syu --noconfirm
+            sudo pacman -S --noconfirm \
+                python \
+                python-pip \
+                python-virtualenv \
+                base-devel \
+                curl \
+                wget \
+                git \
+                jq \
+                unzip \
+                tar \
+                ca-certificates
+            ;;
+        "brew")
+            print_info "Installing prerequisites with brew..."
+            brew update
+            brew install \
+                python@3.12 \
+                curl \
+                wget \
+                git \
+                jq \
+                unzip \
+                tar
+            ;;
+    esac
+    
+    print_success "System prerequisites installed"
+    log "System prerequisites installed with $pkg_manager"
+}
+
+check_and_install_prerequisites() {
+    print_section "Checking Prerequisites"
+    
+    local missing_prereqs=()
+    
+    # Check Python 3
+    if ! command_exists python3; then
+        missing_prereqs+=("python3")
+    fi
+    
+    # Check pip
+    if ! command_exists pip3 && ! python3 -m pip --version >/dev/null 2>&1; then
+        missing_prereqs+=("python3-pip")
+    fi
+    
+    # Check if python3-venv is available
+    if ! python3 -m venv --help >/dev/null 2>&1; then
+        missing_prereqs+=("python3-venv")
+    fi
+    
+    # Check curl
+    if ! command_exists curl; then
+        missing_prereqs+=("curl")
+    fi
+    
+    # Check git
+    if ! command_exists git; then
+        missing_prereqs+=("git")
+    fi
+    
+    # Check jq
+    if ! command_exists jq; then
+        missing_prereqs+=("jq")
+    fi
+    
+    if [[ ${#missing_prereqs[@]} -gt 0 ]]; then
+        print_warning "Missing prerequisites: ${missing_prereqs[*]}"
+        print_info "Installing missing prerequisites..."
+        install_system_prerequisites
+    else
+        print_success "All prerequisites are available"
+    fi
+}
+
 # =============================================================================
 # PYTHON ENVIRONMENT SETUP
 # =============================================================================
@@ -82,26 +262,101 @@ setup_directories() {
 setup_python_environment() {
     print_section "Setting up Python Environment for AI Tools"
     
+    # First check and install prerequisites
+    check_and_install_prerequisites
+    
     if ! command_exists python3; then
-        print_error "Python3 not found. Please install Python3 first."
+        print_error "Python3 still not available after prerequisite installation."
+        print_error "Please install Python3 manually and try again."
         return 1
+    fi
+    
+    # Verify python3-venv is working
+    if ! python3 -m venv --help >/dev/null 2>&1; then
+        print_error "Python virtual environment support not available."
+        print_error "Attempting to install python3-venv..."
+        
+        if command_exists apt; then
+            sudo apt update && sudo apt install -y python3-venv python3-full
+        elif command_exists yum; then
+            sudo yum install -y python3-venv
+        elif command_exists dnf; then
+            sudo dnf install -y python3-venv
+        else
+            print_error "Unable to install python3-venv automatically."
+            print_error "Please install it manually for your system."
+            return 1
+        fi
+        
+        # Test again
+        if ! python3 -m venv --help >/dev/null 2>&1; then
+            print_error "Failed to install python3-venv. Please install manually."
+            return 1
+        fi
     fi
     
     # Create virtual environment if it doesn't exist
     if [[ ! -d "$VENV_DIR" ]]; then
         print_info "Creating Python virtual environment..."
-        python3 -m venv "$VENV_DIR"
-        print_success "Virtual environment created at $VENV_DIR"
+        if python3 -m venv "$VENV_DIR"; then
+            print_success "Virtual environment created at $VENV_DIR"
+        else
+            print_error "Failed to create virtual environment"
+            print_info "Trying alternative approach..."
+            
+            # Alternative approach using virtualenv if available
+            if command_exists virtualenv; then
+                virtualenv "$VENV_DIR"
+                print_success "Virtual environment created using virtualenv"
+            else
+                print_error "Unable to create virtual environment"
+                print_info "Installing virtualenv and trying again..."
+                
+                # Install virtualenv via pip
+                if command_exists pip3; then
+                    pip3 install --user virtualenv
+                    "$HOME/.local/bin/virtualenv" "$VENV_DIR" || {
+                        print_error "All virtual environment creation methods failed"
+                        return 1
+                    }
+                else
+                    print_error "No pip3 available to install virtualenv"
+                    return 1
+                fi
+            fi
+        fi
     else
         print_info "Virtual environment already exists"
+        
+        # Verify the virtual environment is not corrupted
+        if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
+            print_warning "Virtual environment appears corrupted (missing activation script)"
+            print_info "Removing corrupted virtual environment..."
+            rm -rf "$VENV_DIR"
+            
+            print_info "Creating fresh Python virtual environment..."
+            if python3 -m venv "$VENV_DIR"; then
+                print_success "Fresh virtual environment created at $VENV_DIR"
+            else
+                print_error "Failed to recreate virtual environment"
+                return 1
+            fi
+        fi
     fi
     
     # Activate and upgrade pip
-    source "$VENV_DIR/bin/activate"
-    pip install --upgrade pip setuptools wheel
-    
-    print_success "Python environment ready"
-    log "Python environment setup completed"
+    if [[ -f "$VENV_DIR/bin/activate" ]]; then
+        source "$VENV_DIR/bin/activate"
+        print_info "Upgrading pip and essential packages..."
+        pip install --upgrade pip setuptools wheel || {
+            print_warning "Failed to upgrade some packages, continuing..."
+        }
+        print_success "Python environment ready"
+        log "Python environment setup completed"
+    else
+        print_error "Virtual environment activation script not found"
+        return 1
+    fi
 }
 
 # =============================================================================
@@ -1183,40 +1438,93 @@ EOF
 show_installation_status() {
     print_section "Installation Status"
     
+    # System prerequisites
+    print_info "System Prerequisites:"
+    local prereqs=("python3" "pip3" "curl" "git" "jq")
+    for prereq in "${prereqs[@]}"; do
+        if command_exists "$prereq"; then
+            print_success "  ✓ $prereq"
+        else
+            print_error "  ✗ $prereq"
+        fi
+    done
+    
+    # Python venv support
+    if python3 -m venv --help >/dev/null 2>&1; then
+        print_success "  ✓ python3-venv"
+    else
+        print_error "  ✗ python3-venv"
+    fi
+    
+    echo
+    
     # Python environment
     if [[ -d "$VENV_DIR" ]]; then
         print_success "Python environment: $VENV_DIR"
-        source "$VENV_DIR/bin/activate"
-        print_info "Python version: $(python --version)"
-        print_info "Installed packages: $(pip list | wc -l)"
+        if [[ -f "$VENV_DIR/bin/activate" ]]; then
+            source "$VENV_DIR/bin/activate"
+            print_info "Python version: $(python --version)"
+            print_info "Installed packages: $(pip list | wc -l)"
+            deactivate 2>/dev/null || true
+        fi
     else
         print_error "Python environment not found"
     fi
     
+    echo
+    
     # Key AI packages
-    local key_packages=("openai" "anthropic" "langchain" "jupyter" "streamlit" "ollama")
+    local key_packages=("openai" "anthropic" "langchain" "jupyter" "streamlit")
     print_info "Key AI Tools Status:"
     for pkg in "${key_packages[@]}"; do
-        if [[ "$pkg" == "ollama" ]]; then
-            if command_exists ollama; then
-                print_success "  ✓ $pkg (system)"
-            else
-                print_error "  ✗ $pkg (not installed)"
-            fi
-        else
-            if source "$VENV_DIR/bin/activate" 2>/dev/null && python -c "import $pkg" 2>/dev/null; then
+        if [[ -f "$VENV_DIR/bin/activate" ]]; then
+            source "$VENV_DIR/bin/activate" 2>/dev/null
+            if python -c "import $pkg" 2>/dev/null; then
                 print_success "  ✓ $pkg"
             else
                 print_error "  ✗ $pkg"
             fi
+            deactivate 2>/dev/null || true
+        else
+            print_error "  ✗ $pkg (no environment)"
         fi
     done
     
-    # MCP configuration
-    if [[ -f "$CONFIG_DIR/mcp-config.json" ]]; then
-        print_success "MCP configuration: $CONFIG_DIR/mcp-config.json"
+    # System tools
+    echo
+    print_info "System Tools:"
+    if command_exists ollama; then
+        print_success "  ✓ Ollama (system)"
     else
-        print_error "MCP configuration not found"
+        print_error "  ✗ Ollama (not installed)"
+    fi
+    
+    if command_exists q; then
+        print_success "  ✓ Amazon Q CLI ($(q --version 2>/dev/null | head -1 || echo 'version unknown'))"
+    else
+        print_error "  ✗ Amazon Q CLI (not installed)"
+    fi
+    
+    echo
+    
+    # Configuration files
+    print_info "Configuration:"
+    if [[ -f "$CONFIG_DIR/mcp-config.json" ]]; then
+        print_success "  ✓ MCP configuration: $CONFIG_DIR/mcp-config.json"
+    else
+        print_error "  ✗ MCP configuration not found"
+    fi
+    
+    if [[ -f "$CONFIG_DIR/.env" ]]; then
+        print_success "  ✓ API keys configuration: $CONFIG_DIR/.env"
+    else
+        print_warning "  ⚠ API keys not configured (copy from .env.template)"
+    fi
+    
+    if [[ -f "$CONFIG_DIR/ai-aliases.sh" ]]; then
+        print_success "  ✓ AI aliases: $CONFIG_DIR/ai-aliases.sh"
+    else
+        print_error "  ✗ AI aliases not configured"
     fi
     
     # Log file
@@ -1284,23 +1592,24 @@ show_main_menu() {
     echo "  4. Amazon Q Developer CLI Only"
     echo
     echo "🔧 Individual Components:"
-    echo "  5. Install Local AI Tools (Ollama, Transformers)"
-    echo "  6. Install AI Development Tools (Jupyter, Streamlit)"
-    echo "  7. Install MCP Core Components"
-    echo "  8. Install AWS MCP Servers"
-    echo "  9. Install Community MCP Servers"
+    echo "  5. Install System Prerequisites"
+    echo "  6. Install Local AI Tools (Ollama, Transformers)"
+    echo "  7. Install AI Development Tools (Jupyter, Streamlit)"
+    echo "  8. Install MCP Core Components"
+    echo "  9. Install AWS MCP Servers"
+    echo " 10. Install Community MCP Servers"
     echo
     echo "⚙️  Configuration & Management:"
-    echo " 10. Create AI Service Configuration Templates"
-    echo " 11. Create MCP Configuration"
-    echo " 12. Setup AI Aliases & Shortcuts"
-    echo " 13. Show Installation Status"
-    echo " 14. Manage Services"
-    echo " 15. Test AI Service Connections"
+    echo " 11. Create AI Service Configuration Templates"
+    echo " 12. Create MCP Configuration"
+    echo " 13. Setup AI Aliases & Shortcuts"
+    echo " 14. Show Installation Status"
+    echo " 15. Manage Services"
+    echo " 16. Test AI Service Connections"
     echo
-    echo " 16. Exit"
+    echo " 17. Exit"
     echo
-    echo -n "Select option (1-16): "
+    echo -n "Select option (1-17): "
 }
 
 complete_ai_setup() {
@@ -1476,6 +1785,7 @@ EOF
 
 main() {
     setup_directories
+    check_sudo_access
     log "AI & MCP Setup Manager started"
     
     while true; do
@@ -1494,62 +1804,65 @@ main() {
                 install_openai_tools
                 ;;
             4)
-                setup_python_environment
+                check_and_install_prerequisites
                 install_amazon_q_cli
                 ;;
             5)
-                setup_python_environment
-                install_local_ai_tools
+                install_system_prerequisites
                 ;;
             6)
                 setup_python_environment
-                install_ai_development_tools
+                install_local_ai_tools
                 ;;
             7)
                 setup_python_environment
-                install_mcp_core
+                install_ai_development_tools
                 ;;
             8)
                 setup_python_environment
                 install_mcp_core
-                install_aws_mcp_servers
                 ;;
             9)
                 setup_python_environment
                 install_mcp_core
-                install_community_mcp_servers
+                install_aws_mcp_servers
                 ;;
             10)
-                create_ai_config_templates
+                setup_python_environment
+                install_mcp_core
+                install_community_mcp_servers
                 ;;
             11)
-                create_mcp_config
+                create_ai_config_templates
                 ;;
             12)
-                create_ai_aliases
+                create_mcp_config
                 ;;
             13)
+                create_ai_aliases
+                ;;
+            14)
                 show_installation_status
                 echo
                 echo "Press Enter to continue..."
                 read -r
                 ;;
-            14)
+            15)
                 manage_services
                 ;;
-            15)
+            16)
                 test_ai_connections
                 echo
                 echo "Press Enter to continue..."
                 read -r
                 ;;
-            16)
+            17)
                 print_success "Goodbye!"
                 log "AI & MCP Setup Manager exited"
                 exit 0
                 ;;
             *)
-                print_error "Invalid option. Please select 1-16."
+                print_error "Invalid option. Please select 1-17."
                 sleep 2
                 ;;
         esac
