@@ -28,9 +28,11 @@ The setup script automates the installation and configuration of:
 
 ### 🚀 AWS-Optimized Terminal
 
-- **AWS Profile Indicator**: Your prompt shows the current AWS profile
-- **Fast Profile Switching**: Use `awsp` command to quickly switch between accounts
-- **Multi-Account Support**: Sample configuration for SSO, IAM, and cross-account access
+- **Enhanced AWS Profile Switching**: Role-based profile management with visual indicators
+- **Multi-Role Support**: Switch between Administrator, ReadOnly, PowerUser roles
+- **AWS Profile Indicator**: Your prompt shows current AWS profile and role with color coding
+- **Fast Profile Switching**: Use `awsp` command with interactive role selection
+- **Multi-Account Support**: Complete configuration for SSO, IAM, and cross-account access
 - **Region Switching**: Quickly change AWS regions with `awsregion` command
 - **AWS Helper Functions**: Shortcuts for common AWS tasks:
   - EC2 instance listing with `awsec2list`
@@ -38,6 +40,14 @@ The setup script automates the installation and configuration of:
   - CloudFormation stack status with `awscf`
   - ECR login with `ecr-login`
   - Session Manager connections with `ssm-connect` and `ssm-list-connect`
+
+### 🤖 AI & MCP Tools (Optional)
+
+- **Standalone AI Setup**: Independent AI development environment
+- **MCP Server Integration**: Model Context Protocol servers for enhanced AI workflows
+- **Local AI Tools**: Ollama, Transformers, ChromaDB for local AI development
+- **Development Environment**: Jupyter Lab, Streamlit, FastAPI for AI applications
+- **AWS AI Integration**: Bedrock, SageMaker, and AWS AI service MCP servers
 
 ### 💻 Development Environment
 
@@ -94,6 +104,26 @@ After running the script, your environment will include:
    ```bash
    chmod +x setup-aws-wsl.sh
    ```
+
+### AI & MCP Tools Setup (Optional)
+
+For AI development and MCP server integration, use the separate AI setup manager:
+
+```bash
+# Launch AI & MCP setup menu
+./setup-ai-mcp.sh
+
+# Or use the quick launcher (after setup)
+ai-mcp setup
+ai-mcp status
+ai-mcp jupyter
+```
+
+**AI Tools Include:**
+- **Local AI**: Ollama, Transformers, ChromaDB
+- **Development**: Jupyter Lab, Streamlit, FastAPI
+- **Cloud AI**: OpenAI, Anthropic, LangChain
+- **MCP Servers**: AWS CDK, Documentation, Terraform, Cost Analysis
 
 3. Run the setup script:
    ```bash

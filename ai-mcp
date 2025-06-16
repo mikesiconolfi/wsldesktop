@@ -1,0 +1,248 @@
+#!/bin/bash
+
+# File Name: ai-mcp
+# Relative Path: ~/github/wsldesktop/ai-mcp
+# Purpose: Quick launcher for AI & MCP Setup Manager.
+# Detailed Overview: This script provides a convenient way to launch the AI & MCP setup manager
+# from anywhere in the system. It handles path resolution and provides quick access to common
+# AI tool management functions without needing to navigate to the specific directory.
+
+# =============================================================================
+# AI & MCP QUICK LAUNCHER
+# =============================================================================
+
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SETUP_SCRIPT="$SCRIPT_DIR/setup-ai-mcp.sh"
+readonly CONFIG_DIR="$HOME/.config/ai-mcp"
+readonly VENV_DIR="$HOME/.venvs/ai-tools"
+
+# Color definitions
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly CYAN='\033[0;36m'
+readonly WHITE='\033[1;37m'
+readonly NC='\033[0m'
+
+print_color() {
+    local color=$1
+    local message=$2
+    echo -e "${color}${message}${NC}"
+}
+
+show_usage() {
+    print_color "$CYAN" "🤖 AI & MCP Quick Launcher"
+    echo
+    print_color "$WHITE" "Usage: ai-mcp [command]"
+    echo
+    print_color "$YELLOW" "Commands:"
+    echo "  setup     - Launch full setup menu"
+    echo "  status    - Show AI tools status"
+    echo "  env       - Activate AI environment"
+    echo "  jupyter   - Start Jupyter Lab"
+    echo "  config    - Show MCP configuration"
+    echo "  log       - Show recent setup log"
+    echo "  test      - Test AI service connections"
+    echo "  q-status  - Check Amazon Q CLI status"
+    echo "  help      - Show this help message"
+    echo
+    print_color "$BLUE" "Examples:"
+    echo "  ai-mcp setup       # Launch setup menu"
+    echo "  ai-mcp status      # Check installation status"
+    echo "  ai-mcp jupyter     # Start Jupyter Lab"
+    echo "  ai-mcp test        # Test AI connections"
+    echo "  ai-mcp q-status    # Check Amazon Q CLI"
+    echo
+    print_color "$BLUE" "AI Service Shortcuts (after setup):"
+    echo "  ai-env             # Activate AI environment"
+    echo "  ai-jupyter         # Start Jupyter Lab"
+    echo "  ai-status          # Show detailed status"
+    echo "  ai-test-connections # Test API connections"
+    echo "  q-chat             # Amazon Q CLI chat"
+    echo "  q-scan             # Amazon Q code scan"
+}
+
+show_status() {
+    print_color "$CYAN" "🔍 AI Tools Status"
+    echo "=================="
+    
+    # Check Python environment
+    if [[ -d "$VENV_DIR" ]]; then
+        print_color "$GREEN" "✓ Python environment: $VENV_DIR"
+        if [[ -f "$VENV_DIR/bin/activate" ]]; then
+            source "$VENV_DIR/bin/activate"
+            echo "  Python: $(python --version 2>/dev/null || echo 'Not available')"
+            echo "  Packages: $(pip list 2>/dev/null | wc -l || echo '0') installed"
+            deactivate 2>/dev/null || true
+        fi
+    else
+        print_color "$YELLOW" "⚠ Python environment not found"
+    fi
+    
+    # Check key tools
+    echo
+    print_color "$BLUE" "Key Tools:"
+    
+    # Amazon Q CLI
+    if command -v q >/dev/null 2>&1; then
+        print_color "$GREEN" "  ✓ Amazon Q CLI installed ($(q --version 2>/dev/null | head -1 || echo 'version unknown'))"
+    else
+        print_color "$YELLOW" "  ⚠ Amazon Q CLI not installed"
+    fi
+    
+    # Ollama
+    if command -v ollama >/dev/null 2>&1; then
+        print_color "$GREEN" "  ✓ Ollama installed"
+    else
+        print_color "$YELLOW" "  ⚠ Ollama not installed"
+    fi
+    
+    # Check AI libraries
+    if [[ -f "$VENV_DIR/bin/activate" ]]; then
+        source "$VENV_DIR/bin/activate" 2>/dev/null
+        
+        if python -c "import openai" 2>/dev/null; then
+            print_color "$GREEN" "  ✓ OpenAI SDK available"
+        else
+            print_color "$YELLOW" "  ⚠ OpenAI SDK not available"
+        fi
+        
+        if python -c "import anthropic" 2>/dev/null; then
+            print_color "$GREEN" "  ✓ Anthropic (Claude) SDK available"
+        else
+            print_color "$YELLOW" "  ⚠ Anthropic (Claude) SDK not available"
+        fi
+        
+        deactivate 2>/dev/null || true
+    fi
+    
+    # MCP config
+    if [[ -f "$CONFIG_DIR/mcp-config.json" ]]; then
+        print_color "$GREEN" "  ✓ MCP configuration found"
+    else
+        print_color "$YELLOW" "  ⚠ MCP configuration not found"
+    fi
+    
+    # AI aliases
+    if [[ -f "$CONFIG_DIR/ai-aliases.sh" ]]; then
+        print_color "$GREEN" "  ✓ AI aliases configured"
+    else
+        print_color "$YELLOW" "  ⚠ AI aliases not configured"
+    fi
+    
+    # API configuration
+    if [[ -f "$CONFIG_DIR/.env" ]]; then
+        print_color "$GREEN" "  ✓ API keys configured"
+    else
+        print_color "$YELLOW" "  ⚠ API keys not configured (copy from .env.template)"
+    fi
+}
+
+activate_env() {
+    if [[ -f "$VENV_DIR/bin/activate" ]]; then
+        print_color "$GREEN" "🚀 Activating AI environment..."
+        print_color "$BLUE" "Run 'deactivate' to exit the environment"
+        exec bash --rcfile <(echo "source $VENV_DIR/bin/activate; PS1='(ai-tools) \$PS1'")
+    else
+        print_color "$YELLOW" "⚠ AI environment not found. Run 'ai-mcp setup' first."
+        exit 1
+    fi
+}
+
+start_jupyter() {
+    if [[ -f "$VENV_DIR/bin/activate" ]]; then
+        print_color "$GREEN" "🚀 Starting Jupyter Lab..."
+        source "$VENV_DIR/bin/activate"
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
+    else
+        print_color "$YELLOW" "⚠ AI environment not found. Run 'ai-mcp setup' first."
+        exit 1
+    fi
+}
+
+show_config() {
+    if [[ -f "$CONFIG_DIR/mcp-config.json" ]]; then
+        print_color "$CYAN" "📋 MCP Configuration"
+        echo "===================="
+        cat "$CONFIG_DIR/mcp-config.json"
+    else
+        print_color "$YELLOW" "⚠ MCP configuration not found. Run 'ai-mcp setup' first."
+    fi
+}
+
+show_log() {
+    local log_file="$HOME/ai_mcp_setup.log"
+    if [[ -f "$log_file" ]]; then
+        print_color "$CYAN" "📝 Recent Setup Log"
+        echo "==================="
+        tail -20 "$log_file"
+    else
+        print_color "$YELLOW" "⚠ Setup log not found."
+    fi
+}
+
+# Main execution
+case "${1:-}" in
+    "setup")
+        if [[ -f "$SETUP_SCRIPT" ]]; then
+            exec "$SETUP_SCRIPT"
+        else
+            print_color "$YELLOW" "⚠ Setup script not found at $SETUP_SCRIPT"
+            exit 1
+        fi
+        ;;
+    "status")
+        show_status
+        ;;
+    "env")
+        activate_env
+        ;;
+    "jupyter")
+        start_jupyter
+        ;;
+    "config")
+        show_config
+        ;;
+    "log")
+        show_log
+        ;;
+    "test")
+        if [[ -f "$VENV_DIR/bin/activate" ]] && [[ -f "$CONFIG_DIR/ai_config_example.py" ]]; then
+            print_color "$CYAN" "🔗 Testing AI Service Connections"
+            echo "================================="
+            source "$VENV_DIR/bin/activate"
+            cd "$CONFIG_DIR"
+            python ai_config_example.py 2>/dev/null || echo "⚠ Connection test failed. Check your .env configuration."
+        else
+            print_color "$YELLOW" "⚠ AI environment or test script not found. Run 'ai-mcp setup' first."
+        fi
+        ;;
+    "q-status")
+        print_color "$CYAN" "🔍 Amazon Q CLI Status"
+        echo "======================"
+        if command -v q >/dev/null 2>&1; then
+            print_color "$GREEN" "✓ Amazon Q CLI installed"
+            q --version
+            echo ""
+            echo "Authentication status:"
+            q auth status || print_color "$YELLOW" "⚠ Authentication may be required"
+            echo ""
+            echo "AWS Profile: ${AWS_PROFILE:-default}"
+            echo "AWS Region: ${AWS_REGION:-$(aws configure get region 2>/dev/null || echo 'not set')}"
+        else
+            print_color "$YELLOW" "⚠ Amazon Q CLI not installed. Run 'ai-mcp setup' to install."
+        fi
+        ;;
+    "help"|"-h"|"--help")
+        show_usage
+        ;;
+    "")
+        show_usage
+        ;;
+    *)
+        print_color "$YELLOW" "⚠ Unknown command: $1"
+        echo
+        show_usage
+        exit 1
+        ;;
+esac
